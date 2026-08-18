@@ -26,6 +26,12 @@ async function startServer() {
     // ── Register BullMQ Repeating Jobs ──────────────────
     await registerRepeatingJobs();
 
+    // ── Run Worker In-Process (For Free Tiers) ──────────
+    if (process.env.RUN_WORKER_IN_WEB === "true") {
+      console.log("[Worker] RUN_WORKER_IN_WEB is true. Booting BullMQ inside Express process...");
+      require("./worker");
+    }
+
     // ── Start Express Server ────────────────────────────
     app.listen(PORT, () => {
       console.log(`\n══════════════════════════════════════════`);
