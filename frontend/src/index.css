@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Fonts */
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Inter', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+    /* Core palette */
+    --color-ink: #1B2430;           
+    --color-ink-soft: #4A5568;      
+    --color-ink-faint: #8A93A3;     
+
+    --color-paper: #F7F6F2;         
+    --color-paper-raised: #FFFFFF;  
+    --color-paper-sunken: #EFEDE6;  
+
+    --color-teal-900: #12302C;      
+    --color-teal-700: #1F4741;      
+    --color-teal-500: #2E6B62;      
+    --color-teal-100: #DCE8E5;      
+
+    --color-gold-700: #9A7A4C;      
+    --color-gold-500: #B8945F;      
+    --color-gold-100: #F0E6D4;      
+
+    --color-rust-700: #7D3423;      
+    --color-rust-500: #A8452F;      
+    --color-rust-100: #F3DED8;      
+
+    --color-line: #DDD8CE;          
+    --color-line-strong: #C4BEB0;   
+
+    /* Semantic aliases */
+    --color-text-primary: var(--color-ink);
+    --color-text-secondary: var(--color-ink-soft);
+    --color-text-muted: var(--color-ink-faint);
+    --color-bg-app: var(--color-paper);
+    --color-bg-card: var(--color-paper-raised);
+    --color-bg-input: var(--color-paper-sunken);
+    --color-accent-primary: var(--color-teal-700);
+    --color-accent-primary-hover: var(--color-teal-500);
+    --color-accent-positive: var(--color-gold-500);
+    --color-accent-alert: var(--color-rust-500);
+    --color-border-default: var(--color-line);
+    --color-border-strong: var(--color-line-strong);
+
+    /* Shape & Shadows */
+    --radius-sm: 4px;    
+    --radius-md: 8px;    
+    --radius-lg: 12px;   
+    
+    --shadow-none: none;  
+    --shadow-raised: 0 2px 8px rgba(27, 36, 48, 0.06); 
+  }
+
+  body {
+    background-color: var(--color-bg-app);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
+  }
+}
