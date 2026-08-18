@@ -103,7 +103,7 @@ async function getStructuredContext(userId) {
  * @returns {{ contextText: string, piiEntries: Array }}
  */
 function formatContextForLLM(structuredData, semanticResults) {
-  const { loans, lendBorrow, ccBills, incomeEntries } = structuredData;
+  const { loans = [], lendBorrow = [], ccBills = [], incomeEntries = [] } = structuredData;
   const lines = [];
   const piiEntries = [];
 

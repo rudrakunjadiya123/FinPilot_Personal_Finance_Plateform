@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './primitives/Modal';
+import DatePickerInput from './primitives/DatePickerInput';
 import { useLendBorrow } from '../hooks/useLendBorrow';
 import { Check, AlertCircle } from 'lucide-react';
 
@@ -102,12 +103,11 @@ export default function RepaymentLogModal({ isOpen, onClose, record, remaining }
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1">Repayment Date</label>
-                <input 
-                  type="date" 
-                  value={date} 
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                  className="w-full rounded-xl border border-border-strong bg-paper px-3 py-2 text-xs outline-none focus:border-accent transition-colors"
+                <DatePickerInput 
+                  selected={date ? new Date(date) : null}
+                  onChange={(d) => setDate(d ? d.toISOString().split('T')[0] : '')}
+                  placeholder="Select Repayment Date"
+                  dateFormat="yyyy-MM-dd"
                 />
               </div>
 

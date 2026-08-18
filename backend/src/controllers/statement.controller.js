@@ -289,8 +289,14 @@ function buildTransactionFilters(req) {
   // Related statementUpload filters (type, bank)
   if (statementType && statementType !== 'both' || bankName) {
     where.statementUpload = {};
-    if (statementType && statementType !== 'both') where.statementUpload.statementType = statementType;
-    if (bankName) where.statementUpload.bankName = { contains: bankName, mode: 'insensitive' };
+    if (statementType && statementType !== 'both') {
+      const types = statementType.split(',').filter(Boolean);
+      where.statementUpload.statementType = { in: types };
+    }
+    if (bankName) {
+      const banks = bankName.split(',').filter(Boolean);
+      where.statementUpload.bankName = { in: banks };
+    }
   }
   
   return { where, start, end };

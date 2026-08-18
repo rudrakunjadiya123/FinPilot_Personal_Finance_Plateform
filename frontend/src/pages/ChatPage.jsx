@@ -80,7 +80,7 @@ export default function ChatPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth pb-20" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth" ref={scrollRef}>
          {messages.length === 0 && (
            <div className="text-center text-ink-faint text-sm mt-12 border border-border-default border-dashed py-12 rounded-xl bg-paper-sunken/50 max-w-md mx-auto">
               <Sparkles className="w-8 h-8 text-accent mx-auto mb-3 opacity-50" />
@@ -144,7 +144,7 @@ export default function ChatPage() {
       </div>
 
       {/* Input */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 border-t border-border-default shrink-0 bg-paper-sunken/80 backdrop-blur-md z-10">
+      <div className="p-4 md:p-5 border-t border-border-default shrink-0 bg-paper-sunken z-10">
          <form onSubmit={handleSend} className="relative flex items-center w-full mx-auto">
             <input 
                type="text" 

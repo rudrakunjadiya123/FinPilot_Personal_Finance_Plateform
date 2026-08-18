@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Base instance mapped to Express port 5000 naturally
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
   headers: {
     'Content-Type': 'application/json'
   }

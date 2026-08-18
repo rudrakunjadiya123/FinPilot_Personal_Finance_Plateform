@@ -7,11 +7,12 @@ import {
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, ResponsiveContainer,
-  LineChart, Line, Cell
+  Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, Cell
 } from 'recharts';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import DatePickerInput from '../components/primitives/DatePickerInput';
+import MultiSelect from '../components/primitives/MultiSelect';
 
 const VALID_CATEGORIES = [
   "Food", "Groceries", "Rent", "Fuel", "Shopping",
@@ -36,10 +37,10 @@ export default function StatementsPage() {
   const [timePeriod, setTimePeriod] = useState('last_month');
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-  const [statementType, setStatementType] = useState('both');
+  const [selectedStatementTypes, setSelectedStatementTypes] = useState([]);
   
-  const [bankNameStr, setBankNameStr] = useState("all"); 
-  const [selectedCategory, setSelectedCategory] = useState("all"); 
+  const [selectedBanks, setSelectedBanks] = useState([]); 
+  const [selectedCategories, setSelectedCategories] = useState([]); 
   
   // Custom Debounce for LLM token limiting across rapid UI renders
   const [debouncedPayload, setDebouncedPayload] = useState({});
@@ -75,9 +76,9 @@ export default function StatementsPage() {
     setSubmittedPayload({
       startDate: actualStartDate,
       endDate: actualEndDate,
-      statementType,
-      bankName: bankNameStr === 'all' ? '' : bankNameStr, 
-      categories: selectedCategory === 'all' ? [] : [selectedCategory]
+      statementType: selectedStatementTypes.length > 0 ? selectedStatementTypes.join(',') : '',
+      bankName: selectedBanks.length > 0 ? selectedBanks.join(',') : '', 
+      categories: selectedCategories
     });
   };
 
@@ -94,13 +95,13 @@ export default function StatementsPage() {
            setCustomStart(mStart);
            setCustomEnd(mEnd);
            
-           if (recentUploadData.params.bankName) setBankNameStr(recentUploadData.params.bankName);
-           if (recentUploadData.params.statementType) setStatementType(recentUploadData.params.statementType);
+           if (recentUploadData.params.bankName) setSelectedBanks([recentUploadData.params.bankName]);
+           if (recentUploadData.params.statementType) setSelectedStatementTypes([recentUploadData.params.statementType]);
 
            setSubmittedPayload({
               startDate: mStart,
               endDate: mEnd,
-              statementType: recentUploadData.params.statementType || 'both',
+              statementType: recentUploadData.params.statementType || '',
               bankName: recentUploadData.params.bankName || '',
               categories: []
            });
@@ -261,37 +262,58 @@ export default function StatementsPage() {
              {timePeriod === 'custom' && (
                <div className="flex flex-col gap-1.5">
                  <label className="text-xs font-semibold text-ink-soft uppercase tracking-wide">Custom Window</label>
-                 <div className="flex items-center gap-2 bg-paper rounded-xl border border-border-strong shadow-sm overflow-hidden">
-                   <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="px-3 py-1 text-sm bg-transparent outline-none font-medium" />
-                   <span className="text-ink-soft font-mono text-xs px-2 bg-paper-sunken py-1.5">—</span>
-                   <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="px-3 py-1 text-sm bg-transparent outline-none font-medium" />
+                 <div className="flex items-center gap-2 bg-paper rounded-xl border border-border-strong shadow-sm overflow-visible p-1">
+                   <DatePickerInput 
+                     selected={customStart ? new Date(customStart) : null}
+                     onChange={(date) => setCustomStart(date ? date.toISOString().split('T')[0] : '')}
+                     placeholder="Start"
+                     dateFormat="yyyy-MM-dd"
+                     className="w-32 bg-transparent"
+                   />
+                   <span className="text-ink-soft font-mono text-xs px-1">—</span>
+                   <DatePickerInput 
+                     selected={customEnd ? new Date(customEnd) : null}
+                     onChange={(date) => setCustomEnd(date ? date.toISOString().split('T')[0] : '')}
+                     placeholder="End"
+                     dateFormat="yyyy-MM-dd"
+                     className="w-32 bg-transparent"
+                   />
                  </div>
                </div>
              )}
 
-             <div className="flex flex-col gap-1.5 w-44">
-               <label className="text-xs font-semibold text-ink-soft uppercase tracking-wide">Statement Type</label>
-               <select value={statementType} onChange={(e) => setStatementType(e.target.value)} className="border border-border-strong rounded-lg px-3 py-2 text-sm bg-paper-sunken outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 text-ink font-medium transition-all duration-200">
-                 <option value="both">Both</option>
-                 <option value="bank_account">Bank Statement</option>
-                 <option value="credit_card">Credit Card Statement</option>
-               </select>
+             <div className="flex flex-col gap-1.5 w-52">
+                <MultiSelect
+                   label="Statement Type"
+                   options={[
+                     { label: 'Bank Statement', value: 'bank_account' },
+                     { label: 'Credit Card Statement', value: 'credit_card' },
+                     { label: 'Cash Statement', value: 'cash_statement' }
+                   ]}
+                   selectedValues={selectedStatementTypes}
+                   onChange={setSelectedStatementTypes}
+                   placeholder="All Types"
+                 />
              </div>
 
              <div className="flex flex-col gap-1.5 w-44 lg:w-48">
-               <label className="text-xs font-semibold text-ink-soft uppercase tracking-wide">Banks</label>
-               <select value={bankNameStr} onChange={(e) => setBankNameStr(e.target.value)} className="border border-border-strong rounded-lg px-3 py-2 text-sm bg-paper-sunken outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 text-ink font-medium transition-all duration-200">
-                 <option value="all">All</option>
-                 {(uniqueBanks || []).map(b => <option key={b} value={b}>{b}</option>)}
-               </select>
+                <MultiSelect
+                   label="Banks"
+                   options={(uniqueBanks || []).map(b => ({ label: b, value: b }))}
+                   selectedValues={selectedBanks}
+                   onChange={setSelectedBanks}
+                   placeholder="All Banks"
+                 />
              </div>
 
              <div className="flex flex-col gap-1.5 w-44 lg:w-48">
-               <label className="text-xs font-semibold text-ink-soft uppercase tracking-wide">Categories</label>
-               <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="border border-border-strong rounded-lg px-3 py-2 text-sm bg-paper-sunken outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 text-ink font-medium transition-all duration-200">
-                 <option value="all">All</option>
-                 {VALID_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-               </select>
+                <MultiSelect
+                   label="Categories"
+                   options={VALID_CATEGORIES.map(c => ({ label: c, value: c }))}
+                   selectedValues={selectedCategories}
+                   onChange={setSelectedCategories}
+                   placeholder="All Categories"
+                 />
              </div>
 
              <div className="flex flex-col gap-1.5 justify-end h-[52px]">
@@ -479,13 +501,27 @@ export default function StatementsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold mb-1.5 text-ink">Target Month</label>
-                  <input name="uploadMonth" type="month" required defaultValue={`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`} className="w-full border border-border-strong rounded-xl p-2 text-sm bg-paper outline-none focus:border-accent" />
+                  <DatePickerInput 
+                     selected={new Date(now.getFullYear(), now.getMonth(), 1)} // Dummy, forms should use state, but we'll adapt:
+                     onChange={(date) => {
+                       if(date) {
+                         const y = date.getFullYear();
+                         const m = String(date.getMonth() + 1).padStart(2, '0');
+                         document.getElementsByName('uploadMonth')[0].value = `${y}-${m}`;
+                       }
+                     }}
+                     placeholder="Select Month"
+                     dateFormat="yyyy-MM"
+                     showMonthYearPicker={true}
+                  />
+                  <input type="hidden" name="uploadMonth" defaultValue={`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`} />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-1.5 text-ink">Type</label>
                   <select name="statementType" className="w-full border border-border-strong rounded-xl p-2 text-sm bg-paper outline-none focus:border-accent">
                     <option value="bank_account">Bank Account</option>
                     <option value="credit_card">Credit Card</option>
+                    <option value="cash_statement">Cash Statement</option>
                   </select>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from './primitives/Modal';
 import { useIncome } from '../hooks/useIncome';
+import DatePickerInput from './primitives/DatePickerInput';
 
 export default function AddIncomeModal({ isOpen, onClose }) {
   const { addIncome, isAdding } = useIncome();
@@ -51,11 +52,21 @@ export default function AddIncomeModal({ isOpen, onClose }) {
               />
             </div>
             <div>
-               <label className="block text-sm text-ink mb-1">Attributed Month</label>
-               <input 
-                 type="month" 
-                 name="month" value={formData.month} onChange={handleChange} required
-                 className="w-full uppercase font-mono rounded-lg border border-border-strong bg-paper-sunken px-3 py-2 text-sm outline-none focus:border-accent transition-colors" 
+               <label className="block text-sm text-ink mb-1">Month</label>
+               <DatePickerInput 
+                 selected={formData.month ? new Date(formData.month + "-01T00:00:00") : null}
+                 onChange={(date) => {
+                   if (date) {
+                     const y = date.getFullYear();
+                     const m = String(date.getMonth() + 1).padStart(2, '0');
+                     setFormData(prev => ({...prev, month: `${y}-${m}`}));
+                   } else {
+                     setFormData(prev => ({...prev, month: ''}));
+                   }
+                 }}
+                 placeholder="Select Month"
+                 dateFormat="yyyy-MM"
+                 showMonthYearPicker={true}
                />
             </div>
          </div>

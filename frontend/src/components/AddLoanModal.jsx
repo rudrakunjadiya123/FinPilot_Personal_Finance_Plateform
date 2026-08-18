@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './primitives/Modal';
+import DatePickerInput from './primitives/DatePickerInput';
 import { useLoans } from '../hooks/useLoans';
 
 export default function AddLoanModal({ isOpen, onClose }) {
@@ -104,13 +105,12 @@ export default function AddLoanModal({ isOpen, onClose }) {
 
         <div>
           <label className="block text-sm text-ink mb-1">Start Date</label>
-          <input 
-            type="date" 
-            name="startDate"
-            value={formData.startDate}
-            onChange={handleChange}
-            required
-            className="w-full rounded-lg border border-border-strong bg-paper-sunken px-3 py-2 text-sm outline-none transition-colors"
+          <DatePickerInput 
+            selected={formData.startDate ? new Date(formData.startDate) : null}
+            onChange={(date) => handleChange({ target: { name: 'startDate', value: date ? date.toISOString().split('T')[0] : '' } })}
+            placeholder="Select Start Date"
+            dateFormat="yyyy-MM-dd"
+            className="bg-paper-sunken"
           />
         </div>
 

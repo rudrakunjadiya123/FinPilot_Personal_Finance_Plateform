@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './primitives/Modal';
+import DatePickerInput from './primitives/DatePickerInput';
 import { useGoals } from '../hooks/useGoals';
 import { useLoans } from '../hooks/useLoans';
 
@@ -83,7 +84,12 @@ export default function AddGoalModal({ isOpen, onClose }) {
              </div>
              <div>
                <label className="block text-sm text-ink mb-1">Target Date</label>
-               <input type="date" name="targetDate" value={formData.targetDate} onChange={handleChange} required className="w-full uppercase font-mono rounded-lg border border-border-strong bg-paper px-3 py-2 text-sm outline-none focus:border-accent" />
+               <DatePickerInput 
+                 selected={formData.targetDate ? new Date(formData.targetDate) : null}
+                 onChange={(date) => setFormData(prev => ({...prev, targetDate: date ? date.toISOString().split('T')[0] : ''}))}
+                 placeholder="Select Target Date"
+                 dateFormat="yyyy-MM-dd"
+               />
              </div>
            </>
          ) : (

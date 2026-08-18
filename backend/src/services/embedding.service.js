@@ -26,8 +26,8 @@ function getGenAI() {
 async function generateEmbedding(text) {
   try {
     const ai = getGenAI();
-    // Defaulting to the configured environment variable or standardizing on 004
-    const modelStr = process.env.EMBEDDING_MODEL || "text-embedding-004";
+    // Defaulting to the configured environment variable or standardizing on embedding-001
+    const modelStr = process.env.EMBEDDING_MODEL || "embedding-001";
     const model = ai.getGenerativeModel({ model: modelStr });
 
     const result = await model.embedContent(text);

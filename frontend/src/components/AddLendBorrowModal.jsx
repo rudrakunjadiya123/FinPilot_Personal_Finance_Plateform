@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './primitives/Modal';
+import DatePickerInput from './primitives/DatePickerInput';
 import { useLendBorrow } from '../hooks/useLendBorrow';
 
 export default function AddLendBorrowModal({ isOpen, onClose }) {
@@ -96,10 +97,11 @@ export default function AddLendBorrowModal({ isOpen, onClose }) {
          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-ink mb-1">Date Given</label>
-              <input 
-                type="date" 
-                name="dateGiven" value={formData.dateGiven} onChange={handleChange} required
-                className="w-full rounded-lg border border-border-strong bg-paper px-3 py-2 text-sm outline-none focus:border-accent" 
+              <DatePickerInput 
+                selected={formData.dateGiven ? new Date(formData.dateGiven) : null}
+                onChange={(date) => handleChange({ target: { name: 'dateGiven', value: date ? date.toISOString().split('T')[0] : '' } })}
+                placeholder="Select Date Given"
+                dateFormat="yyyy-MM-dd"
               />
             </div>
             <div>
@@ -115,10 +117,11 @@ export default function AddLendBorrowModal({ isOpen, onClose }) {
          <div className="grid grid-cols-2 gap-4">
             <div>
                <label className="block text-sm text-ink mb-1">Expected Return Date</label>
-               <input 
-                 type="date" 
-                 name="expectedReturnDate" value={formData.expectedReturnDate} onChange={handleChange} required
-                 className="w-full rounded-lg border border-border-strong bg-paper px-3 py-2 text-sm outline-none focus:border-accent" 
+               <DatePickerInput 
+                 selected={formData.expectedReturnDate ? new Date(formData.expectedReturnDate) : null}
+                 onChange={(date) => handleChange({ target: { name: 'expectedReturnDate', value: date ? date.toISOString().split('T')[0] : '' } })}
+                 placeholder="Select Return Date"
+                 dateFormat="yyyy-MM-dd"
                />
             </div>
              <div>
@@ -154,7 +157,12 @@ export default function AddLendBorrowModal({ isOpen, onClose }) {
                ) : (
                  <div>
                   <label className="block text-sm text-ink mb-1">Start Date (Optional)</label>
-                  <input type="date" name="interestStartDate" value={formData.interestStartDate} onChange={handleChange} className="w-full rounded-lg border border-border-strong bg-paper px-3 py-2 text-sm outline-none focus:border-accent" />
+                  <DatePickerInput 
+                    selected={formData.interestStartDate ? new Date(formData.interestStartDate) : null}
+                    onChange={(date) => handleChange({ target: { name: 'interestStartDate', value: date ? date.toISOString().split('T')[0] : '' } })}
+                    placeholder="Select Start Date"
+                    dateFormat="yyyy-MM-dd"
+                  />
                  </div>
                )}
             </div>

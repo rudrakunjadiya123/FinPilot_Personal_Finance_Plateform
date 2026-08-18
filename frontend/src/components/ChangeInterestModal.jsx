@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from './primitives/Modal';
 import { useLendBorrow } from '../hooks/useLendBorrow';
+import DatePickerInput from './primitives/DatePickerInput';
 
 export default function ChangeInterestModal({ isOpen, onClose, record }) {
   const { changeInterestRate, isChangingInterest } = useLendBorrow();
@@ -52,15 +53,15 @@ export default function ChangeInterestModal({ isOpen, onClose, record }) {
               </div>
               
               <div>
-                 <label className="block text-sm text-ink mb-1">Effective Start Date</label>
-                 <input 
-                   type="date" 
-                   value={startDate} 
-                   onChange={(e) => setStartDate(e.target.value)}
-                   required
-                   className="w-full rounded-lg border border-border-strong bg-paper px-3 py-2 text-sm outline-none focus:border-accent transition-colors"
+                 <label className="block text-sm text-ink mb-1">Effective Date</label>
+                 <DatePickerInput 
+                   selected={startDate ? new Date(startDate) : null}
+                   onChange={(date) => setStartDate(date ? date.toISOString().split('T')[0] : '')}
+                   placeholder="Select Effective Date"
+                   dateFormat="yyyy-MM-dd"
+                   className="bg-paper-sunken"
                  />
-              </div>
+               </div>
            </div>
 
            <div className="grid grid-cols-2 gap-4 bg-paper-sunken p-3 rounded-xl border border-border-default">
