@@ -11,13 +11,13 @@ import ChatPanel from '../components/ChatPanel';
 import NotificationBell from '../components/NotificationBell';
 
 const navItems = [
-  { label: 'Dashboard', path: '/', icon: Home },
-  { label: 'Loans', path: '/loans', icon: Landmark },
-  { label: 'Lend & Borrow', path: '/lend-borrow', icon: Users },
-  { label: 'Income', path: '/income', icon: Wallet },
-  { label: 'Goals', path: '/goals', icon: Target },
-  { label: 'Statements & AI', path: '/statements', icon: Brain },
-  { label: 'FinPilot AI Chat', path: '/chat', icon: MessageSquare },
+  { label: 'Dashboard', path: '/app', icon: Home },
+  { label: 'Loans', path: '/app/loans', icon: Landmark },
+  { label: 'Lend & Borrow', path: '/app/lend-borrow', icon: Users },
+  { label: 'Income', path: '/app/income', icon: Wallet },
+  { label: 'Goals', path: '/app/goals', icon: Target },
+  { label: 'Statements & AI', path: '/app/statements', icon: Brain },
+  { label: 'FinPilot AI Chat', path: '/app/chat', icon: MessageSquare },
 ];
 
 export default function AppShell() {
@@ -41,7 +41,7 @@ export default function AppShell() {
     return <Navigate to="/login" replace />;
   }
 
-  const currentTitle = navItems.find(n => n.path === (location.pathname === '/' ? '/' : `/${location.pathname.split('/')[1]}`))?.label || "Finpilot";
+  const currentTitle = navItems.find(n => n.path === location.pathname || (n.path !== '/app' && location.pathname.startsWith(n.path)))?.label || "Finpilot";
 
   return (
     <div className="flex h-screen overflow-hidden bg-paper font-body text-ink">

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../context/AuthContext';
 import { UploadProvider } from '../context/UploadContext';
 import LoginPage from '../pages/LoginPage';
+import LandingPage from '../pages/LandingPage';
 import AppShell from '../layouts/AppShell';
 import DashboardPage from '../pages/DashboardPage';
 import LoansListPage from '../pages/LoansListPage';
@@ -35,9 +36,12 @@ export default function App() {
         <AuthProvider>
           <UploadProvider>
             <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               
-              <Route path="/" element={<AppShell />}>
+              {/* Authenticated app routes */}
+              <Route path="/app" element={<AppShell />}>
                 <Route index element={<DashboardPage />} />
               
               <Route path="loans" element={<LoansListPage />} />
