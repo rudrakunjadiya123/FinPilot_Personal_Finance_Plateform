@@ -24,7 +24,7 @@ export default function PersonHistoryPage() {
   if (personRecords.length === 0) {
     return (
       <div className="flex flex-col min-h-full space-y-6">
-        <Link to="/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors group">
+        <Link to="/app/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors group">
           <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Back
         </Link>
@@ -74,7 +74,7 @@ export default function PersonHistoryPage() {
 
   return (
     <div className="flex flex-col min-h-full space-y-6 pb-12">
-      <Link to="/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors group">
+      <Link to="/app/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors group">
         <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
         Back to Ledger
       </Link>

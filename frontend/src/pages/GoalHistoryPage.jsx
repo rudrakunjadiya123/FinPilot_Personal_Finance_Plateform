@@ -1,14 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGoals } from '../hooks/useGoals';
-import { ArrowLeft, Target } from 'lucide-react';
+import { ArrowLeft, Target, Trash2, ArrowRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import UpdateGoalProgressModal from '../components/UpdateGoalProgressModal';
 
 export default function GoalHistoryPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { goals, isLoading } = useGoals();
-  
+  const { goals, isLoading, deleteGoal } = useGoals();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   if (isLoading) {
     return (
       <div className="text-ink-soft flex items-center gap-2 p-4">
@@ -19,7 +21,7 @@ export default function GoalHistoryPage() {
   }
 
   const goal = goals.find(g => g.id === id);
-  
+
   if (!goal) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center bg-paper-raised border border-border-default border-dashed rounded-xl shadow-card">
@@ -28,15 +30,24 @@ export default function GoalHistoryPage() {
         </div>
         <h2 className="font-display text-lg font-bold text-ink">Goal Not Found</h2>
         <p className="text-sm text-ink-faint mt-1">This goal may have been deleted.</p>
-        <button onClick={() => navigate('/goals')} className="mt-4 text-accent hover:text-accent-hover font-semibold text-sm transition-colors">
+        <button onClick={() => navigate('/app/goals')} className="mt-4 text-accent hover:text-accent-hover font-semibold text-sm transition-colors">
           Return to Goals
         </button>
       </div>
     );
   }
 
+  const handleDelete = () => {
+    if (window.confirm("Are you sure you want to delete this goal? This cannot be undone.")) {
+      deleteGoal(id).then(() => navigate('/app/goals'));
+    }
+  };
+
+  const isSavings = goal.goalType === 'savings';
+  const statusFlag = goal.computedPace?.statusFlag || "ANALYZING";
+
   const logs = goal.progressLogs || [];
-  
+
   const chartData = useMemo(() => {
     const chronoLogs = [...logs].reverse();
     let cumulative = 0;
@@ -52,19 +63,38 @@ export default function GoalHistoryPage() {
 
   return (
     <div className="flex flex-col min-h-full pb-12">
-      <div className="flex items-center mb-6">
-        <button 
-          onClick={() => navigate('/goals')}
-          className="mr-3 p-2 rounded-xl hover:bg-paper-sunken text-ink-soft hover:text-accent transition-all duration-150"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="font-display text-xl font-bold text-ink tracking-tight flex items-center gap-2">
-            <Target className="w-5 h-5 text-accent" />
-            {goal.name} History
-          </h1>
-          <p className="text-xs text-ink-faint mt-0.5">Progress logs and deposit history</p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <button
+            onClick={() => navigate('/app/goals')}
+            className="mr-3 p-2 rounded-xl hover:bg-paper-sunken text-ink-soft hover:text-accent transition-all duration-150"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="font-display text-xl font-bold text-ink tracking-tight flex items-center gap-2">
+              <Target className="w-5 h-5 text-accent" />
+              {goal.name} History
+            </h1>
+            <p className="text-xs text-ink-faint mt-0.5">Progress logs and deposit history</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isSavings && statusFlag !== 'COMPLETED' && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-accent-soft hover:bg-accent text-accent hover:text-white text-xs font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 btn-press shadow-sm"
+            >
+              Log Deposit
+            </button>
+          )}
+          <button
+            onClick={handleDelete}
+            className="bg-negative-soft hover:bg-negative text-negative hover:text-white text-xs font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 btn-press shadow-sm"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
         </div>
       </div>
 
@@ -75,7 +105,7 @@ export default function GoalHistoryPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line)" vertical={false} />
               <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-ink-soft)' }} dy={10} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-ink-faint)' }} tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} dx={-10} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ borderRadius: '10px', border: '1px solid var(--color-border-default)', boxShadow: 'var(--shadow-elevated)', background: 'var(--color-paper-raised)', fontSize: '12px' }}
                 formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Saved']}
               />
@@ -117,6 +147,10 @@ export default function GoalHistoryPage() {
           </table>
         )}
       </div>
+
+      {isSavings && (
+        <UpdateGoalProgressModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} goal={goal} />
+      )}
     </div>
   );
 }

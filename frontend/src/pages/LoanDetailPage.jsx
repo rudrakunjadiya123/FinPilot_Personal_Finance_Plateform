@@ -33,7 +33,7 @@ export default function LoanDetailPage() {
     <div className="flex flex-col min-h-full space-y-6 pb-12">
       
       {/* Back link */}
-      <Link to="/loans" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors duration-150 group">
+      <Link to="/app/loans" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors duration-150 group">
         <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-150" />
         Back to Loans
       </Link>

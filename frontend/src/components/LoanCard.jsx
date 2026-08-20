@@ -13,7 +13,7 @@ export default function LoanCard({ loan }) {
 
   return (
     <div 
-      onClick={() => navigate(`/loans/${loan.id}`)}
+      onClick={() => navigate(`/app/loans/${loan.id}`)}
       className="bg-paper-raised border border-border-default rounded-xl p-5 cursor-pointer card-hover flex flex-col justify-between group h-full shadow-card relative overflow-hidden"
     >
       {/* Hover accent border effect */}

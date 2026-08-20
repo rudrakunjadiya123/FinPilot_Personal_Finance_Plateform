@@ -34,6 +34,9 @@ router.post("/upload", upload.single("statement"), asyncHandler(ctrl.uploadState
 // List all uploads
 router.get("/uploads", asyncHandler(ctrl.listUploads));
 
+// Delete an upload
+router.delete("/uploads/:id", asyncHandler(ctrl.deleteUpload));
+
 // Distinct Banks
 router.get("/banks", asyncHandler(ctrl.getBanks));
 

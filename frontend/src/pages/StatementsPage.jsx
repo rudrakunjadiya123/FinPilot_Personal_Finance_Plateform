@@ -3,14 +3,11 @@ import { useStatements } from '../hooks/useStatements';
 import { useUploadContext } from '../context/UploadContext';
 import {
   Upload, Download, Sparkles, List, Check,
-  History, Clock, FileText, CheckCircle2, XCircle, Search, Landmark, X
+  History, Clock, FileText, CheckCircle2, XCircle, Search, Landmark, X, Trash2
 } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, Cell
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, Cell
 } from 'recharts';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import DatePickerInput from '../components/primitives/DatePickerInput';
 import MultiSelect from '../components/primitives/MultiSelect';
 
@@ -125,6 +122,7 @@ export default function StatementsPage() {
     dashboard, isDashboardLoading,
     uploads, uniqueBanks, expenseTrend, 
     uploadStatement, isUploading,
+    deleteUpload, isDeletingUpload,
     correctCategory, aiInsights, isInsightsLoading
   } = useStatements(submittedPayload);
 
@@ -146,15 +144,10 @@ export default function StatementsPage() {
     form.reset();
   };
 
-  const exportPDF = async () => {
-    if (!reportRef.current) return;
-    const canvas = await html2canvas(reportRef.current, { scale: 2 });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const w = pdf.internal.pageSize.getWidth();
-    const h = (canvas.height * w) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, w, Math.min(h, pdf.internal.pageSize.getHeight()));
-    pdf.save(`FinPilot_Filtered_Report.pdf`);
+  const exportPDF = () => {
+    // We use standard browser printing for maximum performance and native PDF rendering quality
+    // Elements not part of the report are hidden using Tailwind's `print:hidden` class
+    window.print();
   };
 
   const exportCSV = () => {
@@ -186,7 +179,7 @@ export default function StatementsPage() {
     <div className="flex flex-col gap-6 pb-20">
 
       {/* ── Header & Upload ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-default pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-default pb-4 print:hidden">
         <div>
            <h1 className="text-xl font-display font-bold text-ink tracking-tight flex items-center gap-2">Statements & AI</h1>
            <p className="text-xs text-ink-faint mt-0.5">Intelligent statement analysis</p>
@@ -247,7 +240,7 @@ export default function StatementsPage() {
       )}
 
       {/* ── Master Filters (Top Right Requirement Implemented As Secondary Nav Bar) ── */}
-      <div className="bg-paper-raised rounded-xl border border-border-default px-5 py-4 flex flex-wrap items-start md:items-end justify-between gap-6 shadow-card">
+      <div className="bg-paper-raised rounded-xl border border-border-default px-5 py-4 flex flex-wrap items-start md:items-end justify-between gap-6 shadow-card print:hidden">
          <div className="flex flex-wrap items-end gap-5 flex-1 w-full justify-between lg:justify-end">
              <div className="flex flex-col gap-1.5 w-40">
                <label className="text-xs font-semibold text-ink-soft uppercase tracking-wide">Time Period</label>
@@ -437,7 +430,7 @@ export default function StatementsPage() {
                     <p className="text-sm text-ink-faint mt-1">Adjust your filters or upload a statement for this specific period.</p>
                  </div>
               ) : (
-                <div className="overflow-x-auto max-h-[600px] custom-scrollbar">
+                <div className="overflow-x-auto max-h-[600px] print:max-h-none print:overflow-visible custom-scrollbar">
                   <table className="w-full text-sm">
                     <thead className="bg-paper-raised text-ink-soft sticky top-0 shadow-sm z-10">
                     <tr>
@@ -545,7 +538,7 @@ export default function StatementsPage() {
       {/* ── Statement Upload Log History Modal ── */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-paper border border-border-default rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-8 overflow-hidden">
+          <div className="bg-paper border border-border-default rounded-xl shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-8 overflow-hidden">
             
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-border-default flex items-center justify-between bg-paper-sunken">
@@ -633,8 +626,8 @@ export default function StatementsPage() {
                   <p className="text-xs text-ink-soft/70 mt-1">Upload a bank statement using the "Source Docs" button to start building your log history.</p>
                 </div>
               ) : (
-                <div className="border border-border-default rounded-lg overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-xs">
+                <div className="border border-border-default rounded-lg overflow-x-auto shadow-sm">
+                  <table className="w-full text-left text-xs min-w-[850px]">
                     <thead className="bg-paper-sunken text-ink-soft font-semibold uppercase tracking-wider border-b border-border-default">
                       <tr>
                         <th className="px-4 py-3">Bank / Origin</th>
@@ -643,6 +636,7 @@ export default function StatementsPage() {
                         <th className="px-4 py-3">Uploaded At</th>
                         <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3 text-right">Transactions</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-default font-medium">
@@ -705,6 +699,20 @@ export default function StatementsPage() {
                               </td>
                               <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-ink">
                                 {upload.totalTransactions ?? 0}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm("Are you sure you want to delete this statement? This will remove all associated transactions.")) {
+                                      deleteUpload(upload.id);
+                                    }
+                                  }}
+                                  disabled={isDeletingUpload}
+                                  className="p-1.5 text-ink-faint hover:text-negative hover:bg-negative-soft rounded-lg transition-colors disabled:opacity-50"
+                                  title="Delete Statement"
+                                >
+                                  <Trash2 className="w-4 h-4 inline-block" />
+                                </button>
                               </td>
                             </tr>
                           );

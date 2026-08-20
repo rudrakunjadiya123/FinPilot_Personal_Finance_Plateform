@@ -131,6 +131,20 @@ export function useStatements(filters = {}) {
     },
   });
 
+  // Delete Upload Mutation
+  const deleteUploadMutation = useMutation({
+    mutationFn: async (id) => {
+      const { data } = await apiClient.delete(`/api/statements/uploads/${id}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: filterKey });
+      queryClient.invalidateQueries({ queryKey: ['statements', 'uploads'] });
+      queryClient.invalidateQueries({ queryKey: ['statements', 'needsReview'] });
+      queryClient.invalidateQueries({ queryKey: ['statements', 'trend'] });
+    },
+  });
+
   return {
     dashboard,
     isDashboardLoading,
@@ -142,6 +156,8 @@ export function useStatements(filters = {}) {
     savingsTrend,
     uploadStatement: uploadMutation.mutateAsync,
     isUploading: uploadMutation.isPending,
+    deleteUpload: deleteUploadMutation.mutateAsync,
+    isDeletingUpload: deleteUploadMutation.isPending,
     correctCategory: correctCategoryMutation.mutateAsync,
     addInvestment: addInvestmentMutation.mutateAsync,
     aiInsights: insightsData?.insights || null,

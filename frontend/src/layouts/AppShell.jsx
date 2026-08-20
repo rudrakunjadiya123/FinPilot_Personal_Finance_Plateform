@@ -44,10 +44,10 @@ export default function AppShell() {
   const currentTitle = navItems.find(n => n.path === location.pathname || (n.path !== '/app' && location.pathname.startsWith(n.path)))?.label || "Finpilot";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-paper font-body text-ink">
+    <div className="flex h-screen print:h-auto overflow-hidden print:overflow-visible bg-paper font-body text-ink">
       
       {/* ════ Sidebar (Desktop) ════ */}
-      <aside className="w-[260px] bg-sidebar border-r border-border-default flex-col justify-between hidden md:flex shrink-0 transition-colors duration-300">
+      <aside className="w-[260px] bg-sidebar border-r border-border-default flex-col justify-between hidden md:flex shrink-0 transition-colors duration-300 print:hidden">
         <div>
           {/* Logo */}
           <div className="h-16 flex items-center px-6 border-b border-border-default">
@@ -67,6 +67,7 @@ export default function AppShell() {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  end={item.path === '/app'}
                   className={({ isActive }) =>
                     `flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-medium nav-hover ${
                       isActive 
@@ -104,7 +105,7 @@ export default function AppShell() {
             </div>
             <button 
               onClick={logout} 
-              className="p-2 text-ink-faint hover:text-negative rounded-lg hover:bg-negative-soft/50 transition-all duration-200" 
+              className="p-2 text-ink-faint hover:text-negative hover:bg-negative-soft/50 transition-all duration-200" 
               title="Sign out"
             >
               <LogOut className="w-[16px] h-[16px]" />
@@ -116,8 +117,8 @@ export default function AppShell() {
       {/* ════ Mobile Sidebar Overlay ════ */}
       {mobileMenuOpen && (
         <>
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80] md:hidden animate-fade-in" onClick={() => setMobileMenuOpen(false)} />
-          <aside className="fixed top-0 left-0 h-full w-[280px] bg-sidebar border-r border-border-default z-[90] md:hidden flex flex-col animate-slide-up shadow-elevated">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80] md:hidden animate-fade-in print:hidden" onClick={() => setMobileMenuOpen(false)} />
+          <aside className="fixed top-0 left-0 h-full w-[280px] bg-sidebar border-r border-border-default z-[90] md:hidden flex flex-col animate-slide-up shadow-elevated print:hidden">
             <div className="h-16 flex items-center justify-between px-6 border-b border-border-default">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg accent-gradient flex items-center justify-center shadow-sm">
@@ -134,6 +135,7 @@ export default function AppShell() {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  end={item.path === '/app'}
                   onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium ${
@@ -155,7 +157,7 @@ export default function AppShell() {
       {/* ════ Main Content Area ════ */}
       <main className="flex-1 flex flex-col h-full bg-paper min-w-0 transition-colors duration-300">
         {/* Top Header Bar */}
-        <header className="h-16 min-h-[64px] border-b border-border-default flex items-center justify-between px-6 bg-paper-raised transition-colors duration-300">
+        <header className="h-16 min-h-[64px] border-b border-border-default flex items-center justify-between px-6 bg-paper-raised transition-colors duration-300 print:hidden">
           <div className="flex items-center gap-4">
             <button 
               className="md:hidden p-1.5 text-ink-soft hover:text-ink rounded-lg hover:bg-paper-sunken transition-colors"
@@ -190,7 +192,7 @@ export default function AppShell() {
         </header>
         
         {/* Page Content */}
-        <div className="flex-1 overflow-auto p-4 md:p-8 relative">
+        <div className="flex-1 overflow-auto print:overflow-visible p-4 md:p-8 relative">
           <Outlet />
           
           {/* AI Chat Floating Action Button */}

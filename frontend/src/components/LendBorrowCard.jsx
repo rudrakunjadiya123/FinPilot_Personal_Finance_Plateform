@@ -16,7 +16,7 @@ export default function LendBorrowCard({ record }) {
 
   return (
     <div 
-      onClick={() => navigate(`/lend-borrow/${record.id}`)}
+      onClick={() => navigate(`/app/lend-borrow/${record.id}`)}
       className="bg-paper-raised border border-border-default rounded-xl p-5 cursor-pointer card-hover flex flex-col justify-between group h-full shadow-card relative overflow-hidden"
     >
       {/* Left accent border */}

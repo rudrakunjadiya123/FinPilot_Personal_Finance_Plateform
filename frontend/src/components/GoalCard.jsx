@@ -56,7 +56,7 @@ export default function GoalCard({ goal }) {
   return (
     <>
       <div 
-        onClick={() => navigate(`/goals/${goal.id}`)}
+        onClick={() => navigate(`/app/goals/${goal.id}`)}
         className="bg-paper-raised border border-border-default rounded-xl p-5 flex flex-col justify-between group h-full shadow-card relative cursor-pointer card-hover overflow-hidden"
       >
         {/* Top accent line */}
@@ -75,7 +75,7 @@ export default function GoalCard({ goal }) {
             </span>
             <button 
                onClick={handleDelete}
-               className="opacity-0 group-hover:opacity-100 p-1 text-ink-faint hover:text-negative hover:bg-negative-soft rounded-lg transition-all duration-150"
+               className="p-1 text-ink-faint hover:text-negative hover:bg-negative-soft rounded-lg transition-all duration-150"
                title="Delete Goal"
             >
                <Trash2 className="w-3.5 h-3.5" />

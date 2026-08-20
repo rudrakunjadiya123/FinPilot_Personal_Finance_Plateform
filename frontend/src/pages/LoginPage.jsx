@@ -54,7 +54,14 @@ export default function LoginPage() {
           {(loginError || registerError) && (
             <div className="mb-4 text-sm text-negative bg-negative-soft p-3 rounded-lg border border-negative/20 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-negative shrink-0" />
-              {(loginError || registerError)?.response?.data?.error?.message || "Operation failed. Please try again."}
+              {(() => {
+                const err = (loginError || registerError)?.response?.data?.error;
+                if (!err) return "Operation failed. Please try again.";
+                if (err.details && err.details.length > 0) {
+                  return err.details.map(d => d.message).join(" • ");
+                }
+                return err.message;
+              })()}
             </div>
           )}
 

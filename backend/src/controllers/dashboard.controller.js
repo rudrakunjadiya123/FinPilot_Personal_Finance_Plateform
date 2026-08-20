@@ -242,11 +242,11 @@ async function getDashboardSummary(req, res) {
     };
   });
 
-  const monthlyIncome = cashFlowInfo.totalIncome > 0 ? cashFlowInfo.totalIncome : 80000;
-  const monthlyExpense = cashFlowInfo.totalObligations > 0 ? cashFlowInfo.totalObligations : 52000;
+  const monthlyIncome = cashFlowInfo.totalIncome || 0;
+  const monthlyExpense = cashFlowInfo.totalObligations || 0;
   const availableCash = monthlyIncome - monthlyExpense;
-  const netWorthVal = netWorthInfo.netWorth !== 0 ? netWorthInfo.netWorth : 845000;
-  const totalDebtVal = netWorthInfo.totalLiabilities > 0 ? netWorthInfo.totalLiabilities : 1850000;
+  const netWorthVal = netWorthInfo.netWorth || 0;
+  const totalDebtVal = netWorthInfo.totalLiabilities || 0;
 
   // 6. Generate Dynamic Data-Driven AI Financial Insights
   const dynamicAIInsights = await generateDynamicAIInsights(userId, {
@@ -268,55 +268,34 @@ async function getDashboardSummary(req, res) {
       monthlyExpense,
       monthlyExpenseTrend: -6.5,
       totalDebt: totalDebtVal,
-      availableCash: availableCash > 0 ? availableCash : 28000,
-      totalEmi: totalEmi > 0 ? totalEmi : 32500,
+      availableCash: availableCash,
+      totalEmi: totalEmi || 0,
     },
     cashFlowBreakdown: {
       income: monthlyIncome,
       expenses: monthlyExpense,
-      savings: availableCash > 0 ? availableCash : 28000,
+      savings: availableCash,
       history: [
-        { month: "May", amount: 18000 },
-        { month: "Jun", amount: 21000 },
-        { month: "Jul", amount: 25000 },
-        { month: "Aug", amount: availableCash > 0 ? availableCash : 28000 },
+        { month: "May", amount: 0 },
+        { month: "Jun", amount: 0 },
+        { month: "Jul", amount: 0 },
+        { month: "Aug", amount: availableCash },
       ],
     },
     spendingAnalysis: {
-      food: categoryTotals.Food > 0 ? categoryTotals.Food : 8500,
-      shopping: categoryTotals.Shopping > 0 ? categoryTotals.Shopping : 7200,
-      rent: categoryTotals.Rent > 0 ? categoryTotals.Rent : 15000,
-      transport: categoryTotals.Transport > 0 ? categoryTotals.Transport : 4200,
-      utilities: categoryTotals.Utilities > 0 ? categoryTotals.Utilities : 3500,
-      entertainment: categoryTotals.Entertainment > 0 ? categoryTotals.Entertainment : 2100,
-      other: categoryTotals.Other > 0 ? categoryTotals.Other : 11500,
-      moneyLent: totalLent > 0 ? totalLent : 250000,
-      toReceive: toReceive > 0 ? toReceive : 180000,
-      moneyBorrowed: totalBorrowed > 0 ? totalBorrowed : 75000,
-      toPay: toPay > 0 ? toPay : 50000,
+      food: categoryTotals.Food || 0,
+      shopping: categoryTotals.Shopping || 0,
+      rent: categoryTotals.Rent || 0,
+      transport: categoryTotals.Transport || 0,
+      utilities: categoryTotals.Utilities || 0,
+      entertainment: categoryTotals.Entertainment || 0,
+      other: categoryTotals.Other || 0,
+      moneyLent: totalLent || 0,
+      toReceive: toReceive || 0,
+      moneyBorrowed: totalBorrowed || 0,
+      toPay: toPay || 0,
     },
-    goals: formattedGoals.length > 0 ? formattedGoals : [
-      {
-        id: "1",
-        name: "Car",
-        icon: "🎯",
-        currentSaved: 240000,
-        targetAmount: 500000,
-        percentage: 48,
-        status: "On Track",
-        statusColor: "emerald"
-      },
-      {
-        id: "2",
-        name: "Emergency Fund",
-        icon: "🛡",
-        currentSaved: 90000,
-        targetAmount: 240000,
-        percentage: 37,
-        status: "At Risk",
-        statusColor: "amber"
-      }
-    ],
+    goals: formattedGoals,
     aiInsights: dynamicAIInsights
   });
 }
@@ -340,7 +319,7 @@ async function generateDynamicAIInsights(userId, data) {
     );
   } else {
     insights.push(
-      "Your food spending increased 24% this month. You spent ₹2,100 more than your 3-month average."
+      "Connect your bank statements to start receiving AI-powered insights on your spending patterns."
     );
   }
 
@@ -353,7 +332,7 @@ async function generateDynamicAIInsights(userId, data) {
     );
   } else {
     insights.push(
-      "Your personal loan has the highest interest rate among your active loans. Consider evaluating it first when you have extra repayment capacity."
+      "You currently have no active debt. Keep it up!"
     );
   }
 
@@ -374,7 +353,7 @@ async function generateDynamicAIInsights(userId, data) {
     );
   } else {
     insights.push(
-      "Your car goal is slightly behind schedule. Saving an additional ₹3,500/month would bring you back on track."
+      "Set your first financial goal to start receiving personalized tracking insights."
     );
   }
 
@@ -386,7 +365,7 @@ async function generateDynamicAIInsights(userId, data) {
     );
   } else {
     insights.push(
-      `You may have ₹18,000 available after your expected expenses this month.`
+      `You currently have no recorded surplus for this month.`
     );
   }
 

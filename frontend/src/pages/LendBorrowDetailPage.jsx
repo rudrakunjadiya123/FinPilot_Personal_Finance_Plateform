@@ -25,7 +25,7 @@ export default function LendBorrowDetailPage() {
   if (!record) {
     return (
       <div className="flex flex-col min-h-full space-y-6 p-6">
-        <Link to="/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors group">
+        <Link to="/app/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors group">
           <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Back to Records
         </Link>
@@ -64,7 +64,7 @@ export default function LendBorrowDetailPage() {
     <div className="flex flex-col min-h-full space-y-6 pb-12">
       
       {/* Back link */}
-      <Link to="/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors duration-150 group">
+      <Link to="/app/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors duration-150 group">
         <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-150" />
         Back to Ledger
       </Link>

@@ -590,8 +590,27 @@ async function getNeedsReview(req, res) {
   res.status(200).json(transactions);
 }
 
+// ── 13. Delete Upload ──────────────────────────────────────
+async function deleteUpload(req, res) {
+  const { id } = req.params;
+  
+  const upload = await prisma.statementUpload.findFirst({
+    where: { id, userId: req.userId }
+  });
+
+  if (!upload) {
+    return res.status(404).json({ error: { message: "Statement upload not found" } });
+  }
+
+  await prisma.statementUpload.delete({
+    where: { id }
+  });
+
+  res.status(200).json({ success: true, message: "Statement deleted successfully" });
+}
+
 module.exports = {
   uploadStatement, getUploadStatus, getTransactions, updateTransactionCategory,
   addManualInvestment, getDashboardMetrics, getExpenseTrend, getSavingsTrend,
-  getCostSummary, getSpendingInsights, listUploads, getBanks, getNeedsReview,
+  getCostSummary, getSpendingInsights, listUploads, getBanks, getNeedsReview, deleteUpload,
 };
