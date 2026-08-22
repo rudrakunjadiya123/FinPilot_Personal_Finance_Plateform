@@ -79,6 +79,19 @@ export function useLoanDetails(loanId) {
     }
   });
 
+  // DELETE Loan
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.delete(`/api/loans/${loanId}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loans'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['upcomingDues'] });
+    }
+  });
+
   return { 
     loan: detailData, 
     progress: null, 
@@ -88,7 +101,9 @@ export function useLoanDetails(loanId) {
     simulatePrepayment: simulateMutation.mutateAsync,
     isSimulating: simulateMutation.isPending,
     commitPrepayment: commitMutation.mutateAsync,
-    isCommitting: commitMutation.isPending
+    isCommitting: commitMutation.isPending,
+    deleteLoan: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending
   };
 }
 

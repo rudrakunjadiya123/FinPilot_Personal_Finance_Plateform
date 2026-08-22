@@ -82,7 +82,8 @@ async function createLoan(req, res) {
   );
 
   // We save the loan and its schedule atomically
-  const loan = await prisma.$transaction(async (tx) => {
+  const loan = await prisma.$transaction(
+    async (tx) => {
     const createdLoan = await tx.loan.create({
       data: {
         userId: req.userId,
@@ -114,7 +115,7 @@ async function createLoan(req, res) {
     });
 
     return createdLoan;
-  }, { maxWait: 5000, timeout: 15000 });
+  }, { maxWait: 15000, timeout: 30000 });
 
   // SRS LOAN-9 / RAG-2: If notes exist, enqueue embedding generation
   if (notes && notes.trim() !== "") {
@@ -237,7 +238,7 @@ async function markEmiPaid(req, res) {
     });
 
     return updatedEmi;
-  }, { maxWait: 5000, timeout: 15000 });
+  }, { maxWait: 15000, timeout: 30000 });
 
   const monthIso = new Date(emiRecord.dueDate).toISOString();
   await invalidateDashboardCaches(req.userId, monthIso);
@@ -388,7 +389,7 @@ async function confirmLoanPrepayment(req, res) {
         status: nextStatus
       },
     });
-  }, { maxWait: 5000, timeout: 20000 });
+  }, { maxWait: 15000, timeout: 30000 });
 
   await invalidateDashboardCaches(req.userId);
   res.status(200).json({ message: "Prepayment confirmed, schedule rebuilt" });

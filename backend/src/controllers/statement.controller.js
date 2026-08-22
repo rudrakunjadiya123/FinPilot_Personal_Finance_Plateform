@@ -437,53 +437,138 @@ async function getDashboardMetrics(req, res) {
 // ── 7. Expense Trend ─────────────────────────────────────
 async function getExpenseTrend(req, res) {
   const { where } = buildTransactionFilters(req);
-  const now = new Date(where.date.lte || new Date());
-  const months = [];
-
-  for (let i = 11; i >= 0; i--) {
-    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59);
+  const end = where.date.lte || new Date();
+  const start = where.date.gte || new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
+  const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  
+  const txs = await prisma.transaction.findMany({ 
+    where: { ...where, type: "debit" },
+    orderBy: { date: "asc" }
+  });
+  
+  const buckets = {};
+  
+  for (const t of txs) {
+    const d = new Date(t.date);
+    let key;
+    if (diffDays <= 35) {
+      key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    } else if (diffDays <= 100) {
+      const day = d.getDay() || 7;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - day + 1);
+      key = `Week of ${String(monday.getDate()).padStart(2, '0')} ${monday.toLocaleString('en-US', { month: 'short' })}`;
+    } else {
+      key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    }
     
-    // Merge baseline filters with this specific month block
-    const monthWhere = { ...where, date: { gte: start, lte: end }, type: "debit" };
-
-    const txs = await prisma.transaction.findMany({ where: monthWhere });
-    const total = txs.reduce((sum, t) => sum + Number(t.amount), 0);
-    
-    months.push({ month: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`, expense: total });
+    if (!buckets[key]) buckets[key] = 0;
+    buckets[key] += Number(t.amount);
+  }
+  
+  const results = [];
+  let current = new Date(start);
+  
+  if (diffDays <= 35) {
+    while (current <= end) {
+      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(current.getDate()).padStart(2, "0")}`;
+      results.push({ period: key, expense: buckets[key] || 0 });
+      current.setDate(current.getDate() + 1);
+    }
+  } else if (diffDays <= 100) {
+    const day = current.getDay() || 7;
+    current.setDate(current.getDate() - day + 1);
+    while (current <= end) {
+      const key = `Week of ${String(current.getDate()).padStart(2, '0')} ${current.toLocaleString('en-US', { month: 'short' })}`;
+      results.push({ period: key, expense: buckets[key] || 0 });
+      current.setDate(current.getDate() + 7);
+    }
+  } else {
+    current.setDate(1);
+    while (current <= end) {
+      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}`;
+      results.push({ period: key, expense: buckets[key] || 0 });
+      current.setMonth(current.getMonth() + 1);
+    }
   }
 
-  res.status(200).json(months);
+  res.status(200).json(results);
 }
 
 // ── 8. Savings Trend ─────────────────────────────────────
 async function getSavingsTrend(req, res) {
   const { where } = buildTransactionFilters(req);
-  const now = new Date(where.date.lte || new Date());
-  const months = [];
+  const end = where.date.lte || new Date();
+  const start = where.date.gte || new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  
+  const txs = await prisma.transaction.findMany({ 
+    where,
+    orderBy: { date: "asc" }
+  });
 
-  for (let i = 11; i >= 0; i--) {
-    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59);
-    
-    const monthWhere = { ...where, date: { gte: start, lte: end } };
-    const txs = await prisma.transaction.findMany({ where: monthWhere });
-
-    let income = 0, expense = 0;
-    for (const t of txs) {
-      if (t.type === "credit") income += Number(t.amount);
-      else if (t.category !== "Investment") expense += Number(t.amount);
+  const buckets = {};
+  for (const t of txs) {
+    const d = new Date(t.date);
+    let key;
+    if (diffDays <= 35) {
+      key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    } else if (diffDays <= 100) {
+      const day = d.getDay() || 7;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - day + 1);
+      key = `Week of ${String(monday.getDate()).padStart(2, '0')} ${monday.toLocaleString('en-US', { month: 'short' })}`;
+    } else {
+      key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     }
-
-    const inv = await prisma.monthlyInvestment.findUnique({
-      where: { userId_month: { userId: req.userId, month: start } },
-    });
-    const manualInv = inv ? Number(inv.amount) : 0;
-
-    months.push({ month: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`, savings: income - expense - manualInv });
+    
+    if (!buckets[key]) buckets[key] = { income: 0, expense: 0 };
+    if (t.type === "credit") buckets[key].income += Number(t.amount);
+    else if (t.category !== "Investment") buckets[key].expense += Number(t.amount);
   }
+  
+  // Fetch investments
+  const investments = await prisma.monthlyInvestment.findMany({
+    where: { userId: req.userId, month: { gte: new Date(start.getFullYear(), start.getMonth(), 1), lte: end } }
+  });
+  
+  const getInvForMonth = (year, monthStr) => {
+     const inv = investments.find(i => i.month.getFullYear() === year && String(i.month.getMonth() + 1).padStart(2, "0") === monthStr);
+     return inv ? Number(inv.amount) : 0;
+  };
 
-  res.status(200).json(months);
+  const results = [];
+  let current = new Date(start);
+  
+  if (diffDays <= 35) {
+    while (current <= end) {
+      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(current.getDate()).padStart(2, "0")}`;
+      const b = buckets[key] || { income: 0, expense: 0 };
+      results.push({ period: key, income: b.income, expense: b.expense, saved: b.income - b.expense });
+      current.setDate(current.getDate() + 1);
+    }
+  } else if (diffDays <= 100) {
+    const day = current.getDay() || 7;
+    current.setDate(current.getDate() - day + 1);
+    while (current <= end) {
+      const key = `Week of ${String(current.getDate()).padStart(2, '0')} ${current.toLocaleString('en-US', { month: 'short' })}`;
+      const b = buckets[key] || { income: 0, expense: 0 };
+      results.push({ period: key, income: b.income, expense: b.expense, saved: b.income - b.expense });
+      current.setDate(current.getDate() + 7);
+    }
+  } else {
+    current.setDate(1);
+    while (current <= end) {
+      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}`;
+      const b = buckets[key] || { income: 0, expense: 0 };
+      const invAmt = getInvForMonth(current.getFullYear(), String(current.getMonth() + 1).padStart(2, "0"));
+      results.push({ period: key, income: b.income, expense: b.expense, saved: b.income - b.expense + invAmt });
+      current.setMonth(current.getMonth() + 1);
+    }
+  }
+  
+  res.status(200).json(results);
 }
 
 // ── 9. Cost Summary ──────────────────────────────────────

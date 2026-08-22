@@ -1,14 +1,27 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useLoanDetails } from '../hooks/useLoans';
 import ProgressBar from '../components/primitives/ProgressBar';
 import EMIScheduleTable from '../components/EMIScheduleTable';
 import PrepaymentSimulatorPanel from '../components/PrepaymentSimulatorPanel';
-import { ChevronLeft, Percent, Calendar, Landmark } from 'lucide-react';
+import { ChevronLeft, Percent, Calendar, Landmark, Trash2 } from 'lucide-react';
 
 export default function LoanDetailPage() {
   const { id } = useParams();
-  const { loan, progress, schedule, isDetailLoading, isScheduleLoading } = useLoanDetails(id);
+  const navigate = useNavigate();
+  const { loan, progress, schedule, isDetailLoading, isScheduleLoading, deleteLoan, isDeleting } = useLoanDetails(id);
+
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this loan? This action cannot be undone.")) {
+      try {
+        await deleteLoan();
+        navigate('/app/loans');
+      } catch (err) {
+        console.error("Failed to delete loan", err);
+        alert("Failed to delete loan. Please try again.");
+      }
+    }
+  };
 
   if (isDetailLoading || isScheduleLoading) {
     return (
@@ -32,11 +45,22 @@ export default function LoanDetailPage() {
   return (
     <div className="flex flex-col min-h-full space-y-6 pb-12">
       
-      {/* Back link */}
-      <Link to="/app/loans" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors duration-150 group">
-        <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-150" />
-        Back to Loans
-      </Link>
+      {/* Top Actions */}
+      <div className="flex justify-between items-center w-full">
+        <Link to="/app/loans" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors duration-150 group">
+          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-150" />
+          Back to Loans
+        </Link>
+        
+        <button 
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="flex items-center gap-1.5 text-negative hover:bg-negative-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-50"
+        >
+          <Trash2 className="w-4 h-4" />
+          {isDeleting ? "Deleting..." : "Delete Loan"}
+        </button>
+      </div>
       
       {/* Header Card */}
       <div className="bg-paper-raised border border-border-default rounded-xl p-6 shadow-card flex flex-col md:flex-row gap-8 justify-between relative overflow-hidden animate-slide-up shrink-0">

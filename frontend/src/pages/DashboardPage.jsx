@@ -21,37 +21,26 @@ export default function DashboardPage() {
   }
 
   const kpis = summaryData?.kpis || {
-    netWorth: 845000, netWorthTrend: 4.2,
-    monthlyIncome: 80000, monthlyExpense: 52000,
-    monthlyExpenseTrend: -6.5, totalDebt: 1850000,
-    availableCash: 28000, totalEmi: 32500,
+    netWorth: 0, netWorthTrend: 0,
+    monthlyIncome: 0, monthlyExpense: 0,
+    monthlyExpenseTrend: 0, totalDebt: 0,
+    availableCash: 0, totalEmi: 0,
   };
 
   const cashFlow = summaryData?.cashFlowBreakdown || {
-    income: 80000, expenses: 52000, savings: 28000,
-    history: [
-      { month: "May", amount: 18000 }, { month: "Jun", amount: 21000 },
-      { month: "Jul", amount: 25000 }, { month: "Aug", amount: 28000 },
-    ],
+    income: 0, expenses: 0, savings: 0,
+    history: [],
   };
 
   const spending = summaryData?.spendingAnalysis || {
-    food: 8500, shopping: 7200, rent: 15000, transport: 4200,
-    utilities: 3500, entertainment: 2100, other: 11500,
-    moneyLent: 250000, toReceive: 180000, moneyBorrowed: 75000, toPay: 50000,
+    food: 0, shopping: 0, rent: 0, transport: 0,
+    utilities: 0, entertainment: 0, other: 0,
+    moneyLent: 0, toReceive: 0, moneyBorrowed: 0, toPay: 0,
   };
 
-  const goals = summaryData?.goals || [
-    { id: "1", name: "Car", icon: "🎯", currentSaved: 240000, targetAmount: 500000, percentage: 48, status: "On Track", statusColor: "emerald" },
-    { id: "2", name: "Emergency Fund", icon: "🛡", currentSaved: 90000, targetAmount: 240000, percentage: 37, status: "At Risk", statusColor: "amber" },
-  ];
+  const goals = summaryData?.goals || [];
 
-  const aiInsights = summaryData?.aiInsights || [
-    "Your food spending increased 24% this month. You spent ₹2,100 more than your 3-month average.",
-    "Your personal loan has the highest interest rate among your active loans.",
-    "Your car goal is slightly behind schedule. Saving an additional ₹3,500/month would bring you back on track.",
-    "You may have ₹18,000 available after your expected expenses this month.",
-  ];
+  const aiInsights = summaryData?.aiInsights || [];
 
   const totalCategories = spending.food + spending.shopping + spending.rent + spending.transport + spending.utilities + spending.entertainment + spending.other;
 

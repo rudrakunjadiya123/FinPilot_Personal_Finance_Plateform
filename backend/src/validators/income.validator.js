@@ -7,11 +7,7 @@ const { z } = require("zod");
 const { INCOME_SOURCES, MAX_MONETARY_VALUE } = require("../utils/constants");
 
 const createIncomeSchema = z.object({
-  source: z.enum(INCOME_SOURCES, {
-    errorMap: () => ({
-      message: `Source must be one of: ${INCOME_SOURCES.join(", ")}`,
-    }),
-  }),
+  source: z.string().min(1, "Source is required").max(100, "Source is too long"),
   amount: z
     .number()
     .positive("Amount must be greater than 0")

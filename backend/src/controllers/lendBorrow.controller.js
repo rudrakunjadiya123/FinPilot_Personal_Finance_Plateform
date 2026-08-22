@@ -415,7 +415,7 @@ async function logRepayment(req, res) {
     });
 
     return { repayment, newStatus, totalRepaid: newTotalRepaid };
-  }, { maxWait: 5000, timeout: 15000 });
+  }, { maxWait: 15000, timeout: 30000 });
 
   await invalidateDashboardCaches(req.userId);
 

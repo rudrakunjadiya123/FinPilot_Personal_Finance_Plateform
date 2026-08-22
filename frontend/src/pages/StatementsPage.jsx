@@ -401,7 +401,11 @@ export default function StatementsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={expenseTrend || []} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--color-line)" />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} tickFormatter={(v) => v.substring(5)} />
+                      <XAxis dataKey="period" tick={{ fontSize: 11 }} tickFormatter={(v) => {
+                        if (!v) return "";
+                        if (v.startsWith("Week")) return v;
+                        return v.length > 7 ? v.substring(5) : v; // YYYY-MM-DD -> MM-DD, YYYY-MM -> YYYY-MM
+                      }} />
                       <YAxis tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={50} tick={{ fontSize: 11 }} />
                       <RechartsTooltip formatter={(v) => `₹${Number(v).toLocaleString()}`} />
                       <Line type="monotone" dataKey="expense" name="Expense" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 6 }} animationDuration={1000} />

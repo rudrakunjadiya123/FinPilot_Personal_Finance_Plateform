@@ -6,7 +6,7 @@ export default function EMIScheduleTable({ schedule }) {
     { label: "Date", key: "dueDate", render: (item) => new Date(item.dueDate).toLocaleDateString('en-GB') },
     { label: "Principal", key: "principalComponent", isMonospace: true, render: (item) => `₹${Number(item.principalComponent).toLocaleString("en-IN")}` },
     { label: "Interest", key: "interestComponent", isMonospace: true, render: (item) => `₹${Number(item.interestComponent).toLocaleString("en-IN")}` },
-    { label: "Balance", key: "remainingBalance", isMonospace: true, render: (item) => `₹${Number(item.remainingBalance).toLocaleString("en-IN")}` },
+    { label: "Balance", key: "balanceAfter", isMonospace: true, render: (item) => `₹${Number(item.balanceAfter).toLocaleString("en-IN")}` },
     { 
       label: "Status", 
       render: (item) => (
