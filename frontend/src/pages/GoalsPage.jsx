@@ -32,18 +32,8 @@ export default function GoalsPage() {
 
       <AddGoalModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
-      {/* Global Pace Alert */}
-      {globalPaceState && (
-        <div className="bg-accent-soft border border-accent/20 rounded-xl p-5 mb-5 flex items-start gap-4 animate-slide-up">
-           <div className="w-10 h-10 rounded-xl bg-accent-soft flex items-center justify-center shrink-0">
-              <Target className="w-5 h-5 text-accent" />
-           </div>
-           <div>
-              <h3 className="font-display text-base font-bold text-ink mb-0.5">Portfolio Diagnostics</h3>
-              <p className="text-sm text-ink-soft">{globalPaceState}</p>
-           </div>
-        </div>
-      )}
+
+
 
       {/* KPI Banner */}
       {!isLoading && goals.length > 0 && (

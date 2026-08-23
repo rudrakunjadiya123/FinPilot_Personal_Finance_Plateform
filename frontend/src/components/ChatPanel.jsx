@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useChat } from '../hooks/useChat';
 import { Bot, User, Send, X, Shield, Terminal, Sparkles } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
+import MarkdownRenderer from './MarkdownRenderer';
 
 export default function ChatPanel() {
   const { isChatOpen, toggleChat } = useUIStore();
@@ -10,7 +11,6 @@ export default function ChatPanel() {
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [showAISees, setShowAISees] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -76,17 +76,6 @@ export default function ChatPanel() {
            </div>
            
            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setShowAISees(!showAISees)}
-                className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border font-semibold transition-all duration-200 ${
-                  showAISees 
-                    ? 'bg-negative-soft text-negative border-negative/30' 
-                    : 'bg-paper-sunken text-ink-faint border-border-default hover:text-ink hover:border-border-strong'
-                }`}
-                title="Toggle API payload view"
-              >
-                <Shield className="w-3 h-3" /> API
-              </button>
               <button onClick={toggleChat} className="p-1.5 text-ink-faint hover:text-ink rounded-lg hover:bg-paper-sunken transition-all duration-150">
                 <X className="w-5 h-5" />
               </button>
@@ -106,12 +95,8 @@ export default function ChatPanel() {
               const isUser = msg.role === 'user';
               
               const renderContent = () => {
-                 if (showAISees && msg.redactedPayloadSent) {
-                    return (
-                       <div className="bg-paper-sunken text-ink p-2 rounded-lg text-[10px] font-mono break-all whitespace-pre-wrap border border-border-default">
-                          {JSON.stringify(msg.redactedPayloadSent, null, 2)}
-                       </div>
-                    );
+                 if (!isUser) {
+                    return <MarkdownRenderer content={msg.content} />;
                  }
                  return msg.content;
               };
@@ -132,7 +117,7 @@ export default function ChatPanel() {
                       }`}>
                          {renderContent()}
                          
-                         {msg.pathUsed === 'function_call' && !showAISees && (
+                         {msg.pathUsed === 'function_call' && (
                            <div className="mt-2 text-[9px] text-ink-faint flex items-center border-t border-border-default/50 pt-1.5 uppercase tracking-wider gap-1">
                              <Terminal className="w-2.5 h-2.5" /> Query executed
                            </div>

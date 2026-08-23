@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useChat } from '../hooks/useChat';
 import { Bot, Send, Shield, Terminal, Sparkles } from 'lucide-react';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 export default function ChatPage() {
   const { sessions, createSession, fetchSession, sendMessage, isSending } = useChat();
@@ -8,7 +9,6 @@ export default function ChatPage() {
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [showAISees, setShowAISees] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -63,20 +63,6 @@ export default function ChatPage() {
             </div>
             <span className="font-display font-bold text-ink text-base">FinPilot AI</span>
          </div>
-         
-         <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowAISees(!showAISees)}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all duration-200 ${
-                showAISees 
-                  ? 'bg-negative-soft text-negative border-negative/30' 
-                  : 'bg-paper text-ink-faint border-border-default hover:text-ink hover:border-border-strong'
-              }`}
-              title="Toggle API payload view"
-            >
-              <Shield className="w-3.5 h-3.5" /> Developer Mode
-            </button>
-         </div>
       </div>
 
       {/* Messages */}
@@ -93,12 +79,8 @@ export default function ChatPage() {
             const isUser = msg.role === 'user';
             
             const renderContent = () => {
-               if (showAISees && msg.redactedPayloadSent) {
-                  return (
-                     <div className="bg-paper-sunken text-ink p-3 rounded-lg text-xs font-mono break-all whitespace-pre-wrap border border-border-default">
-                        {JSON.stringify(msg.redactedPayloadSent, null, 2)}
-                     </div>
-                  );
+               if (!isUser) {
+                  return <MarkdownRenderer content={msg.content} />;
                }
                return msg.content;
             };
@@ -119,7 +101,7 @@ export default function ChatPage() {
                     }`}>
                        {renderContent()}
                        
-                       {msg.pathUsed === 'function_call' && !showAISees && (
+                       {msg.pathUsed === 'function_call' && (
                          <div className="mt-3 text-[10px] text-ink-faint flex items-center border-t border-border-default/50 pt-2 uppercase tracking-wider gap-1.5 font-semibold">
                            <Terminal className="w-3 h-3" /> Query executed successfully
                          </div>
