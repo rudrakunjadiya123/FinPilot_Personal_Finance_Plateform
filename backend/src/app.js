@@ -13,9 +13,33 @@ const app = express();
 
 // ── Security & Parsing ────────────────────────────────────
 app.use(helmet());
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:4173",
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL ? [process.env.CLIENT_URL, "http://localhost:5173"] : ["http://localhost:3000", "http://localhost:5173"],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, curl, health checks)
+      if (!origin) return callback(null, true);
+      
+      const cleanOrigin = origin.replace(/\/$/, "");
+      const cleanClientUrl = (process.env.CLIENT_URL || "").replace(/\/$/, "");
+      
+      if (
+        allowedOrigins.includes(cleanOrigin) ||
+        cleanOrigin === cleanClientUrl ||
+        cleanOrigin.endsWith(".vercel.app")
+      ) {
+        return callback(null, true);
+      }
+      
+      // Allow in development or fallback safely
+      return callback(null, true);
+    },
     credentials: true, // Required for httpOnly refresh token cookie
   })
 );

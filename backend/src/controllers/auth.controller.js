@@ -13,6 +13,22 @@ const { AppError } = require("../middleware/errorHandler");
 const { sendEmail } = require("../services/email.service");
 const validators = require("../validators/auth.validator");
 
+const isProduction = process.env.NODE_ENV === "production";
+
+// Cross-site cookie configuration for Vercel <-> Render production
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+});
+
+const getClearCookieOptions = () => ({
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+});
+
 // Helper to generate access and refresh tokens
 async function createAuthTokens(userId) {
   const accessToken = jwt.sign(
@@ -24,10 +40,9 @@ async function createAuthTokens(userId) {
   // Generate an opaque random string for the refresh token
   const refreshToken = crypto.randomBytes(40).toString("hex");
 
-  // Store in Redis with TTL matching JWT_REFRESH_EXPIRY (e.g., 7 days)
-  // Converting '7d' logic to SECONDS. Defaulting to 7 days = 604800s.
-  const ttl = 7 * 24 * 60 * 60; 
-  await redis.set(`refresh:${userId}:${refreshToken}`, "valid", "EX", ttl);
+  // Store in Redis with TTL (7 days = 604800s)
+  const ttl = 7 * 24 * 60 * 60;
+  await redis.set(`refresh_token:${refreshToken}`, userId, "EX", ttl);
 
   return { accessToken, refreshToken };
 }
@@ -57,17 +72,13 @@ async function register(req, res) {
 
   const { accessToken, refreshToken } = await createAuthTokens(user.id);
 
-  // Send refresh token as httpOnly cookie natively matching Login behavior
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000, 
-  });
+  // Send refresh token as httpOnly cookie (and also return in body as fallback)
+  res.cookie("refreshToken", refreshToken, getCookieOptions());
 
   res.status(201).json({
     message: "Registration successful",
     accessToken,
+    refreshToken,
     user: { id: user.id, name: user.name, email: user.email },
   });
 }
@@ -76,7 +87,6 @@ async function register(req, res) {
 async function login(req, res) {
   const { email, password } = validators.loginSchema.parse(req.body);
 
-  // Use generic invalid credentials message as per SRS Edge Cases
   const invalidMessage = "Invalid credentials";
 
   const user = await prisma.user.findUnique({ where: { email } });
@@ -92,32 +102,25 @@ async function login(req, res) {
   const { accessToken, refreshToken } = await createAuthTokens(user.id);
 
   // Send refresh token as httpOnly cookie
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000, 
-  });
+  res.cookie("refreshToken", refreshToken, getCookieOptions());
 
-  res.status(200).json({ accessToken });
+  res.status(200).json({ 
+    message: "Login successful",
+    accessToken, 
+    refreshToken,
+    user: { id: user.id, name: user.name, email: user.email }
+  });
 }
 
 // ── Refresh Token ─────────────────────────────────────────
 async function refresh(req, res) {
-  const refreshToken = req.cookies?.refreshToken;
+  // Support both cookie (same-origin/modern cross-site) and body fallback
+  const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
   if (!refreshToken) {
     throw new AppError("Refresh token missing", 401, "REFRESH_MISSING");
   }
 
-  // To check validation, we'd need the userId. But we only have the token opaque string.
-  // We can scan or, better pattern: Store as `refresh:{token}` => `userId` (Value is userId).
-  // Let's look it up. Since our pattern above `refresh:{userId}:{refreshToken}` was used,
-  // we actually don't know the userId here just from the request (it's expired, probably).
-  // Workaround: We'll scan or rewrite how we save it. Let's lookup via key search.
-  
-  // Note: KEYS or SCAN is slow. Let's instead assume standard pattern is storing refreshToken as the key:
-  // Key: `refresh_token:${refreshToken}` -> Value: `userId`
   const redisKey = `refresh_token:${refreshToken}`;
   const userId = await redis.get(redisKey);
 
@@ -132,45 +135,23 @@ async function refresh(req, res) {
   const newTokens = await createAuthTokens(userId);
 
   // Send new refresh token as httpOnly cookie
-  res.cookie("refreshToken", newTokens.refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+  res.cookie("refreshToken", newTokens.refreshToken, getCookieOptions());
+
+  res.status(200).json({ 
+    accessToken: newTokens.accessToken,
+    refreshToken: newTokens.refreshToken
   });
-
-  res.status(200).json({ accessToken: newTokens.accessToken });
-}
-
-// Rewriting createAuthTokens to support the new lookup structure efficiently
-async function createAuthTokens(userId) {
-  const accessToken = jwt.sign(
-    { userId },
-    process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.JWT_ACCESS_EXPIRY || "15m" }
-  );
-
-  const refreshToken = crypto.randomBytes(40).toString("hex");
-  const ttl = 7 * 24 * 60 * 60; 
-  // Key = refreshToken, Value = userId
-  await redis.set(`refresh_token:${refreshToken}`, userId, "EX", ttl);
-
-  return { accessToken, refreshToken };
 }
 
 // ── Logout ────────────────────────────────────────────────
 async function logout(req, res) {
-  const refreshToken = req.cookies?.refreshToken;
+  const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
   
   if (refreshToken) {
     await redis.del(`refresh_token:${refreshToken}`);
   }
 
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+  res.clearCookie("refreshToken", getClearCookieOptions());
 
   res.status(200).json({ message: "Logged out successfully" });
 }
@@ -291,11 +272,7 @@ async function deleteAccount(req, res) {
   await redis.del(`networth:${userId}`);
   
   // Clear refresh token cookie
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+  res.clearCookie("refreshToken", getClearCookieOptions());
 
   res.status(200).json({ message: "Account deleted successfully" });
 }

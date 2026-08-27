@@ -60,15 +60,19 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Attempt to refresh the token using the httpOnly cookie
+        // Attempt to refresh token (using cookie + body fallback for cross-domain support)
+        const storedRefreshToken = localStorage.getItem('finpilot_refresh_token');
         const { data } = await axios.post(
           `${apiClient.defaults.baseURL}/api/auth/refresh`,
-          {},
+          { refreshToken: storedRefreshToken },
           { withCredentials: true }
         );
 
         const newAccessToken = data.accessToken;
         localStorage.setItem('finpilot_token', newAccessToken);
+        if (data.refreshToken) {
+          localStorage.setItem('finpilot_refresh_token', data.refreshToken);
+        }
         
         apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
         originalRequest.headers.Authorization = 'Bearer ' + newAccessToken;
@@ -78,9 +82,10 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         
-        // If refresh fails (e.g. cookie expired), clear session and redirect
+        // If refresh fails (e.g. refresh token expired after 7 days), clear session and redirect
+        localStorage.removeItem('finpilot_token');
+        localStorage.removeItem('finpilot_refresh_token');
         if (window.location.pathname !== '/login') {
-          localStorage.removeItem('finpilot_token');
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);

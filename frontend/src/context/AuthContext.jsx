@@ -18,6 +18,7 @@ export function AuthProvider({ children }) {
         if (error.response?.status === 401) {
           setToken(null);
           localStorage.removeItem('finpilot_token');
+          localStorage.removeItem('finpilot_refresh_token');
         }
         return null; // Resolve cleanly
       }
@@ -34,6 +35,9 @@ export function AuthProvider({ children }) {
     onSuccess: (data) => {
       setToken(data.accessToken);
       localStorage.setItem('finpilot_token', data.accessToken);
+      if (data.refreshToken) {
+        localStorage.setItem('finpilot_refresh_token', data.refreshToken);
+      }
       queryClient.invalidateQueries({ queryKey: ['me'] });
     }
   });
@@ -46,13 +50,19 @@ export function AuthProvider({ children }) {
     onSuccess: (data) => {
       setToken(data.accessToken);
       localStorage.setItem('finpilot_token', data.accessToken);
+      if (data.refreshToken) {
+        localStorage.setItem('finpilot_refresh_token', data.refreshToken);
+      }
       queryClient.invalidateQueries({ queryKey: ['me'] });
     }
   });
 
   const logout = () => {
+    const storedRefreshToken = localStorage.getItem('finpilot_refresh_token');
     setToken(null);
     localStorage.removeItem('finpilot_token');
+    localStorage.removeItem('finpilot_refresh_token');
+    apiClient.post('/api/auth/logout', { refreshToken: storedRefreshToken }).catch(() => {});
     queryClient.clear();
   };
 
