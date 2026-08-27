@@ -31,4 +31,8 @@ router.put("/:id/close", asyncHandler(loanController.closeLoan));
 router.get("/:id/schedule", asyncHandler(loanController.getLoanSchedule));
 router.put("/:id/schedule/:emiId/mark-paid", asyncHandler(loanController.markEmiPaid));
 
+// Prepayment
+router.post("/:id/simulate-prepayment", asyncHandler(loanController.simulateLoanPrepayment));
+router.post("/:id/confirm-prepayment", asyncHandler(loanController.confirmLoanPrepayment));
+
 module.exports = router;

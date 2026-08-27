@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLoans } from '../hooks/useLoans';
+import { useLoanDetails } from '../hooks/useLoans';
 
 export default function PrepaymentSimulatorPanel({ loanId, currentOutstanding }) {
-  const { simulatePrepayment, isSimulating, commitPrepayment, isCommitting } = useLoans(loanId);
+  const { simulatePrepayment, isSimulating, commitPrepayment, isCommitting } = useLoanDetails(loanId);
   const [amountStr, setAmountStr] = useState('');
   const [simulationResult, setSimulationResult] = useState(null);
 
@@ -38,10 +38,12 @@ export default function PrepaymentSimulatorPanel({ loanId, currentOutstanding })
       const result = await simulatePrepayment(amount);
       setSimulationResult(result);
       
+      const tenureReduction = result.monthsReduced ?? result.monthsSaved ?? 0;
+
       // Trigger animations
       setTimeout(() => {
         animateValue(interestSavedRef, 0, result.interestSaved, 400, true);
-        animateValue(tenureSavedRef, 0, result.monthsSaved, 400, false);
+        animateValue(tenureSavedRef, 0, tenureReduction, 400, false);
       }, 0);
     } catch (err) {
       console.error(err);
