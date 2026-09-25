@@ -18,17 +18,18 @@ const VALID_CATEGORIES = [
 ];
 
 const COLORS = {
-  Food: '#ef4444', Groceries: '#f97316', Rent: '#eab308', Fuel: '#84cc16',
-  Shopping: '#22c55e', Entertainment: '#06b6d4', Medical: '#3b82f6',
-  Travel: '#8b5cf6', Education: '#a855f7', Utilities: '#ec4899',
-  Investment: '#14b8a6', Salary: '#10b981', Transfer: '#6b7280', Bills: '#f43f5e', Others: '#94a3b8',
+  Food: '#B91C1C', Groceries: '#15803D', Rent: '#3F3F46', Fuel: '#A16207',
+  Shopping: '#6D28D9', Entertainment: '#6D28D9', Medical: '#B91C1C',
+  Travel: '#1D4ED8', Education: '#6D28D9', Utilities: '#1D4ED8',
+  Investment: '#15803D', Salary: '#15803D', Transfer: '#3F3F46', Bills: '#A16207',
+  Other: '#3F3F46', Others: '#3F3F46',
 };
 
 export default function StatementsPage() {
   const now = new Date();
   
   // ── Global Context ──
-  const { uploadTask, isUploading: isGlobalUploading, progress, status: uploadStatus, recentUploadData, clearRecentData } = useUploadContext();
+  const { uploadTask, progress, status: uploadStatus, recentUploadData, clearRecentData } = useUploadContext();
 
   // ── Filter State ──
   const [timePeriod, setTimePeriod] = useState('last_month');
@@ -39,8 +40,7 @@ export default function StatementsPage() {
   const [selectedBanks, setSelectedBanks] = useState([]); 
   const [selectedCategories, setSelectedCategories] = useState([]); 
   
-  // Custom Debounce for LLM token limiting across rapid UI renders
-  const [debouncedPayload, setDebouncedPayload] = useState({});
+
 
   let actualStartDate = customStart;
   let actualEndDate = customEnd;
@@ -119,11 +119,11 @@ export default function StatementsPage() {
   const reportRef = useRef(null);
 
   const {
-    dashboard, isDashboardLoading,
+    dashboard,
     uploads, uniqueBanks, expenseTrend, 
-    uploadStatement, isUploading,
+    isUploading,
     deleteUpload, isDeletingUpload,
-    correctCategory, aiInsights, isInsightsLoading
+    aiInsights, isInsightsLoading
   } = useStatements(submittedPayload);
 
   const handleUpload = (e) => {
@@ -173,7 +173,6 @@ export default function StatementsPage() {
   };
 
   const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0, minimumFractionDigits: 0 });
-  const fmtBal = (n) => n ? Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
 
   return (
     <div className="flex flex-col gap-6 pb-20">
@@ -462,7 +461,7 @@ export default function StatementsPage() {
                           <p className="truncate font-medium text-ink" title={tx.descriptionRaw}>{tx.descriptionNormalized || tx.descriptionRaw}</p>
                         </td>
                         <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-1 rounded bg-accent-soft border border-teal-100 text-[11px] font-bold text-accent`}>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-paper-sunken border border-border-default text-[11px] font-medium text-ink-soft">
                               {tx.category || 'Uncategorized'}
                             </span>
                         </td>
@@ -531,7 +530,7 @@ export default function StatementsPage() {
 
             <div className="flex justify-end gap-3 mt-8">
               <button type="button" onClick={() => setShowUploadModal(false)} className="px-5 py-2.5 rounded-xl hover:bg-paper-sunken text-sm font-medium text-ink transition-colors">Cancel</button>
-              <button type="submit" disabled={isUploading} className="px-5 py-2.5 bg-teal-700 text-white rounded-xl text-sm font-medium hover:bg-teal-600 disabled:opacity-50 transition-colors shadow-sm">
+              <button type="submit" disabled={isUploading} className="px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors shadow-sm">
                 {isUploading ? 'Parsing & Mapping...' : 'Upload & Compute'}
               </button>
             </div>
@@ -547,7 +546,7 @@ export default function StatementsPage() {
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-border-default flex items-center justify-between bg-paper-sunken">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-accent-soft0/10 rounded-lg border border-teal-500/20">
+                <div className="p-2 bg-accent-soft rounded-lg text-accent">
                   <History className="w-5 h-5 text-accent" />
                 </div>
                 <div>
@@ -566,7 +565,7 @@ export default function StatementsPage() {
             {/* Quick Stat Summary Cards */}
             <div className="p-6 border-b border-border-default bg-paper grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-paper-sunken border border-border-default rounded-lg p-3.5 flex items-center gap-3">
-                <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
+                <div className="p-2 bg-info-soft rounded-xl text-info">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
@@ -576,7 +575,7 @@ export default function StatementsPage() {
               </div>
 
               <div className="bg-paper-sunken border border-border-default rounded-lg p-3.5 flex items-center gap-3">
-                <div className="p-2 bg-accent-soft0/10 rounded-xl text-accent">
+                <div className="p-2 bg-positive-soft rounded-xl text-positive">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
@@ -588,7 +587,7 @@ export default function StatementsPage() {
               </div>
 
               <div className="bg-paper-sunken border border-border-default rounded-lg p-3.5 flex items-center gap-3">
-                <div className="p-2 bg-amber-500/10 rounded-xl text-amber-600">
+                <div className="p-2 bg-neutral-soft rounded-xl text-neutral">
                   <Landmark className="w-5 h-5" />
                 </div>
                 <div>

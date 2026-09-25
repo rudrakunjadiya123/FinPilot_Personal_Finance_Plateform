@@ -687,6 +687,22 @@ async function changeInterestRate(req, res) {
   res.status(200).json(updated);
 }
 
+// ── DELETE Lend/Borrow Record ──────────────────────────────
+async function remove(req, res) {
+  const { id } = req.params;
+  const existingRecord = await prisma.lendBorrowRecord.findUnique({ where: { id } });
+
+  if (!existingRecord || existingRecord.userId !== req.userId) {
+    throw new AppError("Lend/Borrow record not found", 404, "NOT_FOUND");
+  }
+
+  // Deletion automatically cascades to RepaymentHistory and NoteEmbedding
+  await prisma.lendBorrowRecord.delete({ where: { id } });
+
+  await invalidateDashboardCaches(req.userId);
+  res.status(200).json({ message: "Lend/borrow record deleted successfully" });
+}
+
 module.exports = {
   getAll,
   getById,

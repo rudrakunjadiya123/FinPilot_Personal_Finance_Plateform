@@ -19,6 +19,7 @@ export default {
           DEFAULT: 'var(--color-accent)',
           hover: 'var(--color-accent-hover)',
           soft: 'var(--color-accent-soft)',
+          text: 'var(--color-accent-text)',
           glow: 'var(--color-accent-glow)',
         },
 
@@ -37,6 +38,14 @@ export default {
         info: {
           DEFAULT: 'var(--color-info)',
           soft: 'var(--color-info-soft)',
+        },
+        neutral: {
+          DEFAULT: 'var(--color-neutral)',
+          soft: 'var(--color-neutral-soft)',
+        },
+        purple: {
+          DEFAULT: 'var(--color-purple)',
+          soft: 'var(--color-purple-soft)',
         },
 
         border: {

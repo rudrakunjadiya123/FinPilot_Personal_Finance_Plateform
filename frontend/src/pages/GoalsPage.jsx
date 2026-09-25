@@ -6,7 +6,7 @@ import GoalCard from '../components/GoalCard';
 import { Plus, Target, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export default function GoalsPage() {
-  const { goals, globalPaceState, isLoading } = useGoals();
+  const { goals, isLoading } = useGoals();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState(null);
 

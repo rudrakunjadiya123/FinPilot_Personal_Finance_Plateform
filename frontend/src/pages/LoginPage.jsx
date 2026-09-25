@@ -2,11 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
-import { useUIStore } from '../store/uiStore';
 
 export default function LoginPage() {
   const { login, isLoginLoading, loginError, register, isRegisterLoading, registerError } = useAuth();
-  const { theme, toggleTheme } = useUIStore();
   const navigate = useNavigate();
   
   const [isRegistering, setIsRegistering] = useState(false);
@@ -24,7 +22,7 @@ export default function LoginPage() {
         await login({ email, password });
       }
       navigate('/app');
-    } catch(err) {
+    } catch {
       // error tracked in useAuth state
     }
   };

@@ -1,24 +1,25 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useDashboardData } from '../hooks/useDashboardData';
 import LoanSuggestionsWidget from '../components/LoanSuggestionsWidget';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
+import StatusPill from '../components/primitives/StatusPill';
+import { formatCurrency, formatPercentage, calculateFinancialHealth } from '../utils/formatters';
+import { 
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell 
+} from 'recharts';
 import { 
   TrendingUp, TrendingDown, Wallet, CreditCard, Calendar,
   PieChart, Target, Sparkles, ArrowUpRight, ArrowDownRight,
-  HandCoins, PiggyBank, Lightbulb, Activity, CheckCircle2, AlertTriangle
+  HandCoins, PiggyBank, Lightbulb, Activity, 
+  AlertTriangle, ArrowRight, ShieldCheck, Clock,
+  UtensilsCrossed, ShoppingBag, Home, Car, Zap, Film, Package
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { summaryData, isLoadingSummary } = useDashboardData();
 
-  if (isLoadingSummary) {
-    return (
-      <div className="p-8 text-ink-soft flex items-center gap-3">
-        <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full" style={{ animation: 'spin 0.8s linear infinite' }} />
-        <span>Loading your financial dashboard...</span>
-      </div>
-    );
-  }
+  const now = new Date();
+  const currentPeriodText = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
   const kpis = summaryData?.kpis || {
     netWorth: 0, netWorthTrend: 0,
@@ -39,135 +40,467 @@ export default function DashboardPage() {
   };
 
   const goals = summaryData?.goals || [];
-
   const aiInsights = summaryData?.aiInsights || [];
 
-  const totalCategories = spending.food + spending.shopping + spending.rent + spending.transport + spending.utilities + spending.entertainment + spending.other;
+  // Financial health calculation
+  const health = useMemo(() => {
+    return calculateFinancialHealth(kpis, cashFlow);
+  }, [kpis, cashFlow]);
 
-  const kpiCards = [
-    { label: 'Net Worth', value: kpis.netWorth, icon: TrendingUp, trend: `↑ ${kpis.netWorthTrend}%`, trendUp: true, iconBg: 'bg-emerald-50 dark:bg-emerald-950/40', iconColor: 'text-emerald-600', valueColor: 'text-emerald-700 dark:text-emerald-400', trendColor: 'text-emerald-600' },
-    { label: 'Monthly Income', value: kpis.monthlyIncome, icon: PiggyBank, trend: 'Verified', trendUp: true, iconBg: 'bg-green-50 dark:bg-green-950/40', iconColor: 'text-green-600', valueColor: 'text-green-700 dark:text-green-400', trendColor: 'text-green-600' },
-    { label: 'Monthly Expense', value: kpis.monthlyExpense, icon: TrendingDown, trend: `↓ ${Math.abs(kpis.monthlyExpenseTrend)}%`, trendUp: false, iconBg: 'bg-red-50 dark:bg-red-950/40', iconColor: 'text-red-500', valueColor: 'text-red-600 dark:text-red-400', trendColor: 'text-red-500' },
-    { label: 'Total Debt', value: kpis.totalDebt, icon: CreditCard, trend: 'Liabilities', trendUp: false, iconBg: 'bg-rose-50 dark:bg-rose-950/40', iconColor: 'text-rose-500', valueColor: 'text-rose-600 dark:text-rose-400', trendColor: 'text-rose-500' },
-    { label: 'Available Cash', value: kpis.availableCash, icon: Wallet, trend: 'Surplus', trendUp: true, iconBg: 'bg-blue-50 dark:bg-blue-950/40', iconColor: 'text-blue-600', valueColor: 'text-blue-700 dark:text-blue-400', trendColor: 'text-blue-600' },
-    { label: 'Total EMI', value: kpis.totalEmi, icon: Calendar, trend: '/ month', trendUp: false, iconBg: 'bg-orange-50 dark:bg-orange-950/40', iconColor: 'text-orange-500', valueColor: 'text-orange-600 dark:text-orange-400', trendColor: 'text-orange-500' },
+  // Total categorized spending
+  const totalCategories = spending.food + spending.shopping + spending.rent + 
+    spending.transport + spending.utilities + spending.entertainment + spending.other;
+
+  const otherPercentage = totalCategories > 0 ? Math.round((spending.other / totalCategories) * 100) : 0;
+
+  // Primary 4 KPIs
+  const isCashDeficit = kpis.availableCash < 0;
+  const netCashFlowVal = kpis.monthlyIncome - kpis.monthlyExpense;
+
+  const primaryKpis = [
+    {
+      label: 'Net Worth',
+      value: kpis.netWorth,
+      subtitle: 'Assets − Total Liabilities',
+      trend: { direction: 'up', label: 'Calculated live', sentiment: 'neutral' },
+      icon: TrendingUp,
+      iconBg: 'bg-positive-soft',
+      iconColor: 'text-positive',
+    },
+    {
+      label: 'Monthly Cash Flow',
+      value: netCashFlowVal,
+      subtitle: netCashFlowVal >= 0 ? 'Net Monthly Surplus' : 'Net Monthly Deficit',
+      trend: { 
+        direction: netCashFlowVal >= 0 ? 'up' : 'down', 
+        label: netCashFlowVal >= 0 ? 'Surplus' : 'Deficit',
+        sentiment: netCashFlowVal >= 0 ? 'positive' : 'negative'
+      },
+      icon: netCashFlowVal >= 0 ? TrendingUp : TrendingDown,
+      iconBg: netCashFlowVal >= 0 ? 'bg-positive-soft' : 'bg-negative-soft',
+      iconColor: netCashFlowVal >= 0 ? 'text-positive' : 'text-negative',
+    },
+    {
+      label: 'Total Debt',
+      value: kpis.totalDebt,
+      subtitle: 'Active Principal & Borrowed',
+      trend: { direction: 'down', label: 'Active obligations', sentiment: 'neutral' },
+      icon: CreditCard,
+      iconBg: 'bg-negative-soft',
+      iconColor: 'text-negative',
+    },
+    {
+      label: isCashDeficit ? 'Cash Deficit' : 'Available Cash',
+      value: kpis.availableCash,
+      subtitle: isCashDeficit ? 'Obligations exceed income' : 'Unallocated liquidity',
+      trend: { 
+        direction: isCashDeficit ? 'down' : 'up', 
+        label: isCashDeficit ? 'Deficit' : 'Surplus',
+        sentiment: isCashDeficit ? 'negative' : 'positive'
+      },
+      icon: Wallet,
+      iconBg: isCashDeficit ? 'bg-negative-soft' : 'bg-positive-soft',
+      iconColor: isCashDeficit ? 'text-negative' : 'text-positive',
+    },
   ];
 
+  // Secondary 4 KPIs
+  const savingsRateVal = kpis.monthlyIncome > 0 
+    ? ((kpis.monthlyIncome - kpis.monthlyExpense) / kpis.monthlyIncome) * 100 
+    : null;
+
+  const secondaryKpis = [
+    { label: 'Monthly Income', val: kpis.monthlyIncome, icon: PiggyBank, iconBg: 'bg-positive-soft', iconColor: 'text-positive', sub: 'Verified deposits' },
+    { label: 'Monthly Expense', val: kpis.monthlyExpense, icon: TrendingDown, iconBg: 'bg-negative-soft', iconColor: 'text-negative', sub: 'Debits & outflows' },
+    { label: 'Total EMI', val: kpis.totalEmi, icon: Calendar, iconBg: 'bg-info-soft', iconColor: 'text-info', sub: 'Active monthly debt' },
+    { 
+      label: 'Savings Rate', 
+      isPct: true, 
+      val: formatPercentage(savingsRateVal, { fallback: '—' }), 
+      icon: ShieldCheck, 
+      iconBg: 'bg-accent-soft',
+      iconColor: 'text-accent-text',
+      sub: kpis.monthlyIncome > 0 ? 'Of verified income' : 'No income recorded' 
+    },
+  ];
+
+  // Spending categories list mapped strictly to WCAG semantic pairs
   const spendingCategories = [
-    { label: 'Food', amount: spending.food, color: '#EF4444', iconBg: 'bg-red-50 dark:bg-red-950/40', emoji: '🍔' },
-    { label: 'Shopping', amount: spending.shopping, color: '#6366F1', iconBg: 'bg-indigo-50 dark:bg-indigo-950/40', emoji: '🛍️' },
-    { label: 'Rent', amount: spending.rent, color: '#EC4899', iconBg: 'bg-pink-50 dark:bg-pink-950/40', emoji: '🏠' },
-    { label: 'Transport', amount: spending.transport, color: '#3B82F6', iconBg: 'bg-blue-50 dark:bg-blue-950/40', emoji: '🚗' },
-    { label: 'Utilities', amount: spending.utilities, color: '#8B5CF6', iconBg: 'bg-violet-50 dark:bg-violet-950/40', emoji: '⚡' },
-    { label: 'Entertainment', amount: spending.entertainment, color: '#F59E0B', iconBg: 'bg-amber-50 dark:bg-amber-950/40', emoji: '🎬' },
-    { label: 'Other', amount: spending.other, color: '#94A3B8', iconBg: 'bg-slate-50 dark:bg-slate-800/40', emoji: '📦' },
+    { label: 'Food', amount: spending.food, color: 'var(--color-negative-val, #B91C1C)', iconBg: 'bg-negative-soft', iconColor: 'text-negative', icon: UtensilsCrossed },
+    { label: 'Shopping', amount: spending.shopping, color: 'var(--color-purple-val, #6D28D9)', iconBg: 'bg-purple-soft', iconColor: 'text-purple', icon: ShoppingBag },
+    { label: 'Rent', amount: spending.rent, color: 'var(--color-neutral-val, #3F3F46)', iconBg: 'bg-neutral-soft', iconColor: 'text-neutral', icon: Home },
+    { label: 'Transport', amount: spending.transport, color: 'var(--color-negative-val, #B91C1C)', iconBg: 'bg-negative-soft', iconColor: 'text-negative', icon: Car },
+    { label: 'Utilities', amount: spending.utilities, color: 'var(--color-info-val, #1D4ED8)', iconBg: 'bg-info-soft', iconColor: 'text-info', icon: Zap },
+    { label: 'Entertainment', amount: spending.entertainment, color: 'var(--color-purple-val, #6D28D9)', iconBg: 'bg-purple-soft', iconColor: 'text-purple', icon: Film },
+    { label: 'Other', amount: spending.other, color: 'var(--color-neutral-val, #3F3F46)', iconBg: 'bg-neutral-soft', iconColor: 'text-neutral', icon: Package },
   ];
+
+  // Action required items (Section 3.8)
+  const actionItems = [];
+  if (isCashDeficit) {
+    actionItems.push({
+      id: 'deficit',
+      severity: 'negative',
+      title: 'Monthly Cash Deficit Detected',
+      desc: `Your current monthly obligations exceed verified income by ${formatCurrency(Math.abs(kpis.availableCash))}.`,
+      actionText: 'Review Income & Expenses',
+      link: '/app/income'
+    });
+  }
+  if (otherPercentage >= 40 && spending.other > 0) {
+    actionItems.push({
+      id: 'other-spending',
+      severity: 'warning',
+      title: 'High Uncategorized Spending',
+      desc: `${otherPercentage}% of your outflows are marked as "Other". Categorize transactions to sharpen AI forecasts.`,
+      actionText: 'Review Transactions',
+      link: '/app/statements'
+    });
+  }
+  if (kpis.totalEmi > 0) {
+    actionItems.push({
+      id: 'upcoming-emi',
+      severity: 'info',
+      title: 'Scheduled Loan Obligations',
+      desc: `Total monthly EMI of ${formatCurrency(kpis.totalEmi)} scheduled for repayment this cycle.`,
+      actionText: 'View Schedule',
+      link: '/app/loans'
+    });
+  }
+
+  if (isLoadingSummary) {
+    return (
+      <div className="p-12 text-ink-soft flex items-center justify-center gap-3">
+        <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm font-medium">Loading your financial command center...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col space-y-6 pb-16 font-body">
+    <div className="flex flex-col space-y-6 pb-20 font-body">
       
-      {/* Pending Loan Suggestions */}
-      <LoanSuggestionsWidget />
-
-      {/* ── 1. KPI Cards Grid ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {kpiCards.map((card, idx) => (
-          <div 
-            key={idx} 
-            className="bg-paper-raised border border-border-default rounded-xl p-4 shadow-card card-hover flex flex-col justify-between h-[140px] relative overflow-hidden group animate-slide-up"
-            style={{ animationDelay: `${idx * 50}ms` }}
-          >
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full accent-gradient opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-            
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider">{card.label}</span>
-              <div className={`w-8 h-8 rounded-lg ${card.iconBg} flex items-center justify-center`}>
-                <card.icon className={`w-4 h-4 ${card.iconColor}`} />
-              </div>
-            </div>
-            <div>
-              <div className={`text-xl font-mono font-bold tracking-tight ${card.valueColor}`}>₹{Number(card.value).toLocaleString("en-IN")}</div>
-              <div className={`flex items-center gap-1 text-[11px] font-semibold mt-1 ${card.trendColor}`}>
-                {card.trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                <span>{card.trend}</span>
-              </div>
-            </div>
+      {/* ── Page Header & Period Indicator ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-paper-raised border border-border-default rounded-2xl p-5 shadow-card">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display font-bold text-2xl text-ink tracking-tight">Financial Dashboard</h1>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-soft text-accent border border-accent/20">
+              Live
+            </span>
           </div>
-        ))}
+          <p className="text-xs text-ink-soft mt-1">
+            Current accounting period: <span className="font-semibold text-ink">{currentPeriodText}</span>
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Link 
+            to="/app/income" 
+            className="px-3.5 py-2 rounded-xl text-xs font-medium border border-border-default hover:border-border-strong text-ink bg-paper-raised hover:bg-paper-sunken transition-all duration-150"
+          >
+            + Add Income
+          </Link>
+          <Link 
+            to="/app/loans" 
+            className="px-3.5 py-2 rounded-xl text-xs font-medium bg-accent hover:bg-accent-hover text-white shadow-sm transition-all duration-150 flex items-center gap-1.5"
+          >
+            Manage Debt <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
-      {/* ── 2. Cash Flow Section ── */}
-      <div className="bg-paper-raised border border-border-default rounded-xl p-6 shadow-card space-y-6">
+      {/* Pending Loan Suggestions from Statements */}
+      <LoanSuggestionsWidget />
+
+      {/* ── Action Required Section (Section 3.8) ── */}
+      {actionItems.length > 0 && (
+        <div className="bg-paper-raised border border-border-default rounded-2xl p-5 shadow-card space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-warning" />
+              <h2 className="font-display font-bold text-base text-ink">Action Required</h2>
+            </div>
+            <span className="text-[11px] font-medium text-ink-soft">{actionItems.length} items need attention</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {actionItems.map((item) => {
+              const borderTheme = item.severity === 'negative'
+                ? 'border-negative/30 bg-negative-soft/30'
+                : item.severity === 'warning'
+                ? 'border-warning/30 bg-warning-soft/30'
+                : 'border-info/30 bg-info-soft/30';
+
+              const badgeColor = item.severity === 'negative'
+                ? 'bg-negative-soft text-negative'
+                : item.severity === 'warning'
+                ? 'bg-warning-soft text-warning'
+                : 'bg-info-soft text-info';
+
+              return (
+                <div key={item.id} className={`p-4 rounded-xl border ${borderTheme} flex flex-col justify-between`}>
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="font-semibold text-xs text-ink">{item.title}</span>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${badgeColor}`}>
+                        {item.severity}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-ink-soft leading-relaxed">{item.desc}</p>
+                  </div>
+                  <Link 
+                    to={item.link} 
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent-hover transition-colors"
+                  >
+                    <span>{item.actionText}</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── 1. Primary 4-Card KPI Row (Section 3.1) ── */}
+      <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {primaryKpis.map((card, idx) => {
+            const isNeg = Number(card.value) < 0;
+            return (
+              <div 
+                key={idx} 
+                className="bg-paper-raised border border-border-default rounded-2xl p-5 shadow-card hover:shadow-elevated transition-all duration-200 flex flex-col justify-between"
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-medium text-ink-soft">{card.label}</span>
+                  <div className={`w-8 h-8 rounded-xl ${card.iconBg} flex items-center justify-center shrink-0`}>
+                    <card.icon className={`w-4 h-4 ${card.iconColor}`} />
+                  </div>
+                </div>
+
+                <div className="my-2">
+                  <div className={`text-2xl font-mono font-bold tracking-tight ${isNeg ? 'text-negative' : 'text-ink'}`}>
+                    {formatCurrency(card.value)}
+                  </div>
+                  <span className="text-[11px] text-ink-faint mt-0.5 block">{card.subtitle}</span>
+                </div>
+
+                <div className="pt-2 border-t border-border-default/60 flex items-center justify-between text-[11px]">
+                  <span className={`inline-flex items-center gap-1 font-medium ${
+                    card.trend.sentiment === 'positive' ? 'text-positive' : card.trend.sentiment === 'negative' ? 'text-negative' : 'text-ink-soft'
+                  }`}>
+                    {card.trend.direction === 'up' ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                    {card.trend.label}
+                  </span>
+                  <span className="text-ink-faint font-mono text-[10px]">{currentPeriodText.split(' ')[0]}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Secondary 4-Card Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+          {secondaryKpis.map((sec, idx) => (
+            <div key={idx} className="bg-paper-sunken border border-border-default rounded-xl p-3.5 flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg ${sec.iconBg} flex items-center justify-center shrink-0`}>
+                <sec.icon className={`w-4 h-4 ${sec.iconColor}`} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[11px] font-medium text-ink-soft block truncate">{sec.label}</span>
+                <span className="text-base font-mono font-bold text-ink block">
+                  {sec.isPct ? sec.val : formatCurrency(sec.val)}
+                </span>
+                <span className="text-[10px] text-ink-faint block truncate">{sec.sub}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 2. Financial Health Summary (Section 3.2) ── */}
+      <div className="bg-paper-raised border border-border-default rounded-2xl p-6 shadow-card space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-accent" />
+              <h2 className="font-display font-bold text-lg text-ink">Financial Health Index</h2>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${health.badgeColor}`}>
+                {health.rating}
+              </span>
+            </div>
+            <p className="text-xs text-ink-soft mt-1 leading-relaxed">
+              {health.summary}
+            </p>
+          </div>
+
+          <div className="flex items-baseline gap-1.5 shrink-0 bg-paper-sunken px-4 py-2 rounded-xl border border-border-default">
+            <span className="text-3xl font-mono font-bold text-ink">{health.score}</span>
+            <span className="text-xs font-mono text-ink-faint">/ 100</span>
+          </div>
+        </div>
+
+        {/* Score Progress Bar */}
+        <div className="w-full h-2.5 bg-paper-sunken rounded-full overflow-hidden">
+          <div 
+            className={`h-full rounded-full transition-all duration-700 ${
+              health.score >= 80 ? 'bg-positive' : health.score >= 60 ? 'bg-info' : 'bg-warning'
+            }`}
+            style={{ width: `${health.score}%` }} 
+          />
+        </div>
+
+        {/* Diagnostic Factors */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          <div className="bg-paper-sunken p-3 rounded-xl border border-border-default">
+            <span className="text-[10px] font-semibold text-ink-faint uppercase block">Cash Flow State</span>
+            <span className="text-sm font-semibold text-ink mt-0.5 block">{health.metrics.cashFlowRating}</span>
+            <span className="text-[10px] text-ink-soft">Income vs fixed outflows</span>
+          </div>
+          <div className="bg-paper-sunken p-3 rounded-xl border border-border-default">
+            <span className="text-[10px] font-semibold text-ink-faint uppercase block">Debt Burden Ratio</span>
+            <span className="text-sm font-semibold text-ink mt-0.5 block">{health.metrics.debtBurden}</span>
+            <span className="text-[10px] text-ink-soft">Monthly EMI over income</span>
+          </div>
+          <div className="bg-paper-sunken p-3 rounded-xl border border-border-default">
+            <span className="text-[10px] font-semibold text-ink-faint uppercase block">Liquidity Cushion</span>
+            <span className="text-sm font-semibold text-ink mt-0.5 block">{health.metrics.liquidityBuffer}</span>
+            <span className="text-[10px] text-ink-soft">Months of expense coverage</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Cash Flow Overview (Section 3.3 — No Infinity%!) ── */}
+      <div className="bg-paper-raised border border-border-default rounded-2xl p-6 shadow-card space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-display font-bold text-lg text-ink tracking-tight flex items-center gap-2">
               <Activity className="w-5 h-5 text-accent" />
-              Cash Flow Overview
+              Cash Flow Breakdown
             </h2>
-            <p className="text-xs text-ink-faint mt-0.5">Monthly income, expenses & savings</p>
+            <p className="text-xs text-ink-soft mt-0.5">Verified inflows against recurring debts and expenses</p>
           </div>
-          <span className="text-[10px] font-semibold bg-accent-soft text-accent px-3 py-1 rounded-full uppercase tracking-wider">
-            Live
+          <span className="text-[11px] font-medium text-ink-soft">
+            Period: {currentPeriodText}
           </span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
-          {/* Left: Figures & Progress */}
-          <div className="space-y-5">
+          {/* Left: Financial Figures & Safe Percentage Bars */}
+          <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Income', val: cashFlow.income, color: 'bg-green-50 text-green-600' },
-                { label: 'Expenses', val: cashFlow.expenses, color: 'bg-red-50 text-red-500' },
-                { label: 'Savings', val: cashFlow.savings, color: 'bg-blue-50 text-blue-600' },
-              ].map((item, i) => (
-                <div key={i} className="bg-paper-sunken p-3 rounded-lg border border-border-default">
-                  <span className={`inline-flex mb-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${item.color}`}>{item.label}</span>
-                  <span className="text-lg font-mono font-bold text-ink block">₹{Number(item.val).toLocaleString("en-IN")}</span>
-                </div>
-              ))}
+              <div className="bg-paper-sunken p-3.5 rounded-xl border border-border-default">
+                <span className="text-[10px] font-semibold text-positive uppercase block">Income</span>
+                <span className="text-base sm:text-lg font-mono font-bold text-ink block mt-1">
+                  {formatCurrency(cashFlow.income)}
+                </span>
+              </div>
+              <div className="bg-paper-sunken p-3.5 rounded-xl border border-border-default">
+                <span className="text-[10px] font-semibold text-negative uppercase block">Expenses</span>
+                <span className="text-base sm:text-lg font-mono font-bold text-ink block mt-1">
+                  {formatCurrency(cashFlow.expenses)}
+                </span>
+              </div>
+              <div className="bg-paper-sunken p-3.5 rounded-xl border border-border-default">
+                <span className="text-[10px] font-semibold text-accent uppercase block">
+                  {cashFlow.savings >= 0 ? 'Surplus' : 'Deficit'}
+                </span>
+                <span className={`text-base sm:text-lg font-mono font-bold block mt-1 ${cashFlow.savings < 0 ? 'text-negative' : 'text-ink'}`}>
+                  {formatCurrency(cashFlow.savings)}
+                </span>
+              </div>
             </div>
 
-            {/* Progress Bars */}
-            <div className="space-y-3">
-              {[
-                { label: 'Income', pct: 100, val: cashFlow.income, color: 'bg-positive' },
-                { label: 'Expenses', pct: Math.round((cashFlow.expenses / cashFlow.income) * 100), val: cashFlow.expenses, color: 'bg-warning' },
-                { label: 'Savings', pct: Math.round((cashFlow.savings / cashFlow.income) * 100), val: cashFlow.savings, color: 'bg-accent' },
-              ].map((bar, i) => (
-                <div key={i}>
-                  <div className="flex justify-between text-[11px] font-semibold text-ink mb-1">
-                    <span className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${bar.color}`} />
-                      {bar.label}
-                    </span>
-                    <span className="font-mono text-ink-soft">{bar.pct}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-paper-sunken rounded-full overflow-hidden">
-                    <div className={`h-full ${bar.color} rounded-full transition-all duration-500`} style={{ width: `${Math.min(100, bar.pct)}%` }} />
-                  </div>
-                </div>
-              ))}
+            {/* Safe Percentage Bars (No Infinity when income is 0) */}
+            <div className="space-y-3 pt-2">
+              {(() => {
+                const inc = cashFlow.income;
+                const expPct = inc > 0 ? Math.min(100, Math.round((cashFlow.expenses / inc) * 100)) : 0;
+                const savPct = inc > 0 ? Math.max(0, Math.min(100, Math.round((cashFlow.savings / inc) * 100))) : 0;
+
+                return (
+                  <>
+                    <div>
+                      <div className="flex justify-between text-xs font-medium text-ink mb-1">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-positive" />
+                          Income Realized
+                        </span>
+                        <span className="font-mono text-ink-soft">
+                          {inc > 0 ? '100%' : 'No deposits this cycle'}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-paper-sunken rounded-full overflow-hidden">
+                        <div className="h-full bg-positive rounded-full transition-all duration-500" style={{ width: inc > 0 ? '100%' : '0%' }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs font-medium text-ink mb-1">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-warning" />
+                          Expense Ratio
+                        </span>
+                        <span className="font-mono text-ink-soft">
+                          {inc > 0 ? `${expPct}%` : '—'}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-paper-sunken rounded-full overflow-hidden">
+                        <div className="h-full bg-warning rounded-full transition-all duration-500" style={{ width: `${expPct}%` }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs font-medium text-ink mb-1">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-accent" />
+                          Net Savings Rate
+                        </span>
+                        <span className="font-mono text-ink-soft">
+                          {inc > 0 ? `${savPct}%` : '—'}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-paper-sunken rounded-full overflow-hidden">
+                        <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${savPct}%` }} />
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
-          {/* Right: Chart */}
-          <div className="bg-paper-sunken border border-border-default rounded-xl p-4 h-[240px]">
+          {/* Right: Cash Flow History Chart */}
+          <div className="bg-paper-sunken border border-border-default rounded-2xl p-4 h-[250px]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Monthly History</span>
+              <span className="text-xs font-semibold text-ink-soft">Monthly Savings History</span>
+              <span className="text-[10px] text-ink-faint">Last 4 Months</span>
             </div>
-            <div className="h-[195px] w-full">
+            <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cashFlow.history} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-line)" />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-ink-soft)' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-ink-faint)' }} tickFormatter={(v) => `₹${v / 1000}K`} />
+                <BarChart data={cashFlow.history || []} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-line-val, #E5E7EB)" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-ink-soft-val, #6B7280)' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-ink-faint-val, #9CA3AF)' }} tickFormatter={(v) => `₹${Math.round(v / 1000)}K`} />
                   <Tooltip 
-                    contentStyle={{ background: 'var(--color-paper-raised)', border: '1px solid var(--color-border-default)', borderRadius: '10px', boxShadow: 'var(--shadow-elevated)', fontSize: '12px' }}
-                    formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, 'Savings']}
+                    contentStyle={{ 
+                      background: 'var(--color-paper-raised-val, #FFFFFF)', 
+                      border: '1px solid var(--color-line-val, #E5E7EB)', 
+                      borderRadius: '12px', 
+                      boxShadow: 'var(--shadow-elevated)', 
+                      fontSize: '12px' 
+                    }}
+                    formatter={(value) => [formatCurrency(value), 'Net Surplus']}
                   />
                   <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
-                    {cashFlow.history.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={index === cashFlow.history.length - 1 ? 'var(--color-accent)' : 'var(--color-accent-hover)'} opacity={index === cashFlow.history.length - 1 ? 1 : 0.6} />
+                    {(cashFlow.history || []).map((_, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={index === (cashFlow.history?.length - 1) ? 'var(--color-accent-val, #F7931A)' : 'var(--color-accent-hover-val, #FF9F33)'} 
+                        opacity={index === (cashFlow.history?.length - 1) ? 1 : 0.65} 
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -177,146 +510,253 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── 3. Spending & Lend/Borrow Grid ── */}
+      {/* ── 4. Spending Analysis & Lend/Borrow Grid (Sections 3.4 & 3.5) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Spending Analysis */}
-        <div className="lg:col-span-2 bg-paper-raised border border-border-default rounded-xl p-6 shadow-card space-y-4">
+        {/* Spending Analysis with High-Other Warning */}
+        <div className="lg:col-span-2 bg-paper-raised border border-border-default rounded-2xl p-6 shadow-card space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold text-base text-ink flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-accent" />
-              Spending Analysis
-            </h3>
-            <span className="text-[10px] text-ink-faint font-mono uppercase">Categorized</span>
+            <div>
+              <h3 className="font-display font-bold text-base text-ink flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-accent" />
+                Spending by Category
+              </h3>
+              <p className="text-xs text-ink-faint mt-0.5">Aggregated from categorized bank debits</p>
+            </div>
+            <Link to="/app/statements" className="text-xs font-medium text-accent hover:text-accent-hover flex items-center gap-1">
+              <span>View Statements</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
 
+          {/* High Other Category Alert (Section 3.4) */}
+          {otherPercentage >= 40 && spending.other > 0 && (
+            <div className="p-3.5 rounded-xl bg-warning-soft border border-warning/20 flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <div className="flex-1 text-xs">
+                <span className="font-semibold text-ink block">
+                  {otherPercentage}% of spending is categorized as "Other"
+                </span>
+                <span className="text-ink-soft mt-0.5 block leading-relaxed">
+                  Reviewing these transactions will significantly improve your AI cash flow predictions and budgeting models.
+                </span>
+              </div>
+              <Link 
+                to="/app/statements" 
+                className="px-2.5 py-1 text-[11px] font-semibold bg-warning hover:opacity-90 text-white rounded-lg shrink-0 shadow-sm transition-opacity"
+              >
+                Review
+              </Link>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {spendingCategories.map((item, idx) => {
               const pct = totalCategories > 0 ? Math.round((item.amount / totalCategories) * 100) : 0;
               return (
-                <div key={idx} className="bg-paper-sunken p-4 rounded-xl border border-border-default hover:border-border-strong transition-all duration-150 card-hover">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-10 h-10 rounded-xl ${item.iconBg} flex items-center justify-center text-lg`}>
-                      {item.emoji}
+                <div key={idx} className="bg-paper-sunken p-4 rounded-xl border border-border-default hover:border-border-strong transition-all duration-150">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className={`w-8 h-8 rounded-lg ${item.iconBg} flex items-center justify-center shrink-0`}>
+                      <item.icon className={`w-4 h-4 ${item.iconColor}`} />
                     </div>
-                    <div>
-                      <span className="font-semibold text-xs text-ink-soft block">{item.label}</span>
-                      <span className="font-mono text-sm font-bold text-ink">₹{Number(item.amount).toLocaleString("en-IN")}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium text-xs text-ink-soft block truncate">{item.label}</span>
+                      <span className="font-mono text-xs font-bold text-ink truncate block">{formatCurrency(item.amount)}</span>
                     </div>
                   </div>
                   <div className="w-full h-1.5 bg-paper rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: item.color }} />
                   </div>
-                  <span className="text-[10px] text-ink-faint font-mono mt-1 block">{pct}%</span>
+                  <span className="text-[10px] text-ink-faint font-mono mt-1 block">{pct}% of spend</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Lend & Borrow */}
-        <div className="lg:col-span-1 bg-paper-raised border border-border-default rounded-xl p-6 shadow-card space-y-4 flex flex-col">
-          <h3 className="font-display font-bold text-base text-ink flex items-center gap-2">
-            <HandCoins className="w-4 h-4 text-accent" />
-            Lend & Borrow
-          </h3>
+        {/* Lend & Borrow Summary (Section 3.5) */}
+        <div className="lg:col-span-1 bg-paper-raised border border-border-default rounded-2xl p-6 shadow-card space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-display font-bold text-base text-ink flex items-center gap-2">
+                <HandCoins className="w-4 h-4 text-accent" />
+                Lend & Borrow
+              </h3>
+              <Link to="/app/lend-borrow" className="text-xs font-medium text-accent hover:text-accent-hover flex items-center gap-1">
+                <span>View all</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <p className="text-xs text-ink-faint">Peer lending and borrowing position</p>
 
-          <div className="space-y-3 flex-1">
-            <div className="bg-accent-soft border border-accent/20 rounded-lg p-4 space-y-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">Money Lent Out</span>
-              <div className="text-xl font-mono font-bold text-accent">₹{Number(spending.moneyLent).toLocaleString("en-IN")}</div>
-              <div className="flex justify-between text-[11px] pt-1.5 border-t border-accent/10 font-mono">
-                <span className="text-ink-soft">To Receive:</span>
-                <span className="font-bold text-accent">₹{Number(spending.toReceive).toLocaleString("en-IN")}</span>
+            <div className="space-y-3 mt-4">
+              <div className="bg-paper-sunken border border-border-default rounded-xl p-4">
+                <span className="text-[10px] font-semibold text-ink-faint uppercase block">Total Lent Out</span>
+                <div className="text-xl font-mono font-bold text-ink mt-0.5">{formatCurrency(spending.moneyLent)}</div>
+                <div className="flex justify-between text-xs pt-2 mt-2 border-t border-border-default font-mono">
+                  <span className="text-ink-soft">To Receive:</span>
+                  <span className="font-bold text-positive">{formatCurrency(spending.toReceive)}</span>
+                </div>
+              </div>
+
+              <div className="bg-paper-sunken border border-border-default rounded-xl p-4">
+                <span className="text-[10px] font-semibold text-ink-faint uppercase block">Total Borrowed</span>
+                <div className="text-xl font-mono font-bold text-ink mt-0.5">{formatCurrency(spending.moneyBorrowed)}</div>
+                <div className="flex justify-between text-xs pt-2 mt-2 border-t border-border-default font-mono">
+                  <span className="text-ink-soft">To Pay Back:</span>
+                  <span className="font-bold text-negative">{formatCurrency(spending.toPay)}</span>
+                </div>
               </div>
             </div>
+          </div>
 
-            <div className="bg-warning-soft border border-warning/20 rounded-lg p-4 space-y-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-warning">Money Borrowed</span>
-              <div className="text-xl font-mono font-bold text-warning">₹{Number(spending.moneyBorrowed).toLocaleString("en-IN")}</div>
-              <div className="flex justify-between text-[11px] pt-1.5 border-t border-warning/10 font-mono">
-                <span className="text-ink-soft">To Pay:</span>
-                <span className="font-bold text-negative">₹{Number(spending.toPay).toLocaleString("en-IN")}</span>
-              </div>
+          <Link 
+            to="/app/lend-borrow" 
+            className="w-full py-2.5 rounded-xl border border-border-default hover:bg-paper-sunken text-xs font-medium text-ink text-center transition-colors block"
+          >
+            Manage Peer Loans
+          </Link>
+        </div>
+      </div>
+
+      {/* ── 5. Goals & AI Brief Grid (Sections 3.6 & 3.7) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Financial Goals */}
+        <div className="bg-paper-raised border border-border-default rounded-2xl p-6 shadow-card space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display font-bold text-base text-ink flex items-center gap-2">
+              <Target className="w-4 h-4 text-accent" />
+              Financial Goals
+            </h3>
+            <Link to="/app/goals" className="text-xs font-medium text-accent hover:text-accent-hover flex items-center gap-1">
+              <span>View all</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {goals.length === 0 ? (
+            <div className="text-center py-8 text-ink-faint text-xs">
+              No financial goals configured yet. Set a target in the Goals module.
             </div>
+          ) : (
+            <div className="space-y-3">
+              {goals.map((g) => (
+                <div key={g.id} className="bg-paper-sunken border border-border-default rounded-xl p-4 flex items-center gap-4 hover:border-border-strong transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-paper-raised border border-border-default flex items-center justify-center text-xl shrink-0">
+                    {g.icon || '🎯'}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-sm text-ink truncate">{g.name}</span>
+                      <StatusPill status={g.status === 'On Track' ? 'on_track' : 'at_risk'} label={g.status} size="xs" />
+                    </div>
+                    <div className="text-xs font-mono text-ink-soft mt-1">
+                      {formatCurrency(g.currentSaved)} / {formatCurrency(g.targetAmount)} ({g.percentage}%)
+                    </div>
+                    <div className="w-full h-1.5 bg-paper rounded-full overflow-hidden mt-2">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          g.percentage >= 75 ? 'bg-positive' : g.percentage >= 40 ? 'bg-accent' : 'bg-warning'
+                        }`} 
+                        style={{ width: `${Math.min(100, g.percentage)}%` }} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* AI Financial Brief (Section 3.7) */}
+        <div className="bg-paper-raised border border-border-default rounded-2xl p-6 shadow-card space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display font-bold text-base text-ink flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-500" />
+              AI Financial Brief
+            </h3>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+              Copilot Active
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {aiInsights.length === 0 ? (
+              <div className="text-xs text-ink-faint py-6 text-center">
+                Generating personalized insights from your latest cash flow data...
+              </div>
+            ) : (
+              aiInsights.map((insight, idx) => (
+                <div key={idx} className="bg-paper-sunken border border-border-default rounded-xl p-4 flex gap-3 items-start hover:border-purple-300 dark:hover:border-purple-800 transition-colors">
+                  <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 flex items-center justify-center shrink-0 mt-0.5">
+                    <Lightbulb className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-ink leading-relaxed">{insight}</p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <Link to="/app/chat" className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1">
+                        <span>Ask Copilot about this</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── 4. Goals & AI Insights Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Goals */}
-        <div className="bg-paper-raised border border-border-default rounded-xl p-6 shadow-card space-y-4">
-          <h3 className="font-display font-bold text-base text-ink flex items-center gap-2">
-            <Target className="w-4 h-4 text-accent" />
-            Financial Goals
-          </h3>
-
-          <div className="space-y-3">
-            {goals.map((g) => {
-              const circumference = 2 * Math.PI * 20;
-              const offset = circumference - (g.percentage / 100) * circumference;
-              return (
-                <div key={g.id} className="bg-paper-sunken border border-border-default rounded-lg p-4 flex items-center gap-4 hover:border-accent/30 transition-colors duration-150">
-                  {/* Mini circular progress */}
-                  <div className="relative w-12 h-12 shrink-0">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 48 48">
-                      <circle cx="24" cy="24" r="20" fill="none" stroke="var(--color-border-default)" strokeWidth="3" />
-                      <circle cx="24" cy="24" r="20" fill="none" stroke={g.statusColor === 'emerald' ? '#22c55e' : '#f59e0b'} strokeWidth="3" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className="transition-all duration-700" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-[10px] font-bold text-ink">{g.percentage}%</span>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm text-ink flex items-center gap-1.5">
-                        <span className="text-base">{g.icon}</span> {g.name}
-                      </span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        g.statusColor === 'emerald' ? 'bg-green-50 dark:bg-green-950/40 text-green-600' : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600'
-                      }`}>
-                        {g.statusColor === 'emerald' ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                        {g.status}
-                      </span>
-                    </div>
-                    <div className="text-xs font-mono text-ink-soft mt-0.5">
-                      ₹{(g.currentSaved / 100000).toFixed(1)}L / ₹{(g.targetAmount / 100000).toFixed(1)}L
-                    </div>
-                    <div className="w-full h-1.5 bg-paper rounded-full overflow-hidden mt-2">
-                      <div className={`h-full rounded-full transition-all duration-500 ${g.statusColor === 'emerald' ? 'bg-positive' : 'bg-warning'}`} style={{ width: `${g.percentage}%` }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+      {/* ── 6. Upcoming Financial Events (Section 3.9) ── */}
+      <div className="bg-paper-raised border border-border-default rounded-2xl p-6 shadow-card space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-accent" />
+            <h3 className="font-display font-bold text-base text-ink">Upcoming Financial Events</h3>
           </div>
+          <span className="text-[11px] font-medium text-ink-soft">Next 30 Days</span>
         </div>
 
-        {/* AI Insights */}
-        <div className="bg-paper-raised border border-border-default rounded-xl p-6 shadow-card space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold text-base text-ink flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-accent" />
-              AI Insights
-            </h3>
-            <span className="text-[10px] font-semibold bg-accent-soft text-accent px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              Live
-            </span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-paper-sunken p-4 rounded-xl border border-border-default flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-paper-raised flex items-center justify-center text-accent shrink-0 border border-border-default">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-ink block">Next EMI Due Date</span>
+              <span className="text-[11px] text-ink-soft mt-0.5 block">Estimated within cycle</span>
+              <span className="text-xs font-mono font-bold text-ink mt-1 block">
+                {kpis.totalEmi > 0 ? formatCurrency(kpis.totalEmi) : 'No active EMI'}
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-2.5">
-            {aiInsights.map((insight, idx) => (
-              <div key={idx} className="bg-paper-sunken border border-border-default rounded-lg p-3.5 flex gap-3 items-start hover:border-accent/30 transition-colors duration-150 group/insight">
-                <div className="w-7 h-7 rounded-lg bg-accent-soft flex items-center justify-center shrink-0 mt-0.5 group-hover/insight:bg-accent group-hover/insight:text-white transition-colors duration-200">
-                  <Lightbulb className="w-3.5 h-3.5 text-accent group-hover/insight:text-white" />
-                </div>
-                <p className="text-xs text-ink leading-relaxed">{insight}</p>
-              </div>
-            ))}
+          <div className="bg-paper-sunken p-4 rounded-xl border border-border-default flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-paper-raised flex items-center justify-center text-positive shrink-0 border border-border-default">
+              <PiggyBank className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-ink block">Expected Peer Receivable</span>
+              <span className="text-[11px] text-ink-soft mt-0.5 block">From active lent records</span>
+              <span className="text-xs font-mono font-bold text-positive mt-1 block">
+                {formatCurrency(spending.toReceive)}
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-paper-sunken p-4 rounded-xl border border-border-default flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-paper-raised flex items-center justify-center text-info shrink-0 border border-border-default">
+              <Target className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-ink block">Goal Allocation Target</span>
+              <span className="text-[11px] text-ink-soft mt-0.5 block">{goals.length} goals in tracking</span>
+              <Link to="/app/goals" className="text-xs font-medium text-accent hover:underline mt-1 block">
+                View contribution targets →
+              </Link>
+            </div>
           </div>
         </div>
       </div>

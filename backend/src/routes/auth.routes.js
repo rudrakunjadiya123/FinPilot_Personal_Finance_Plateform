@@ -8,12 +8,6 @@ const router = express.Router();
 const asyncHandler = require("../utils/asyncHandler");
 const authController = require("../controllers/auth.controller");
 const { authenticate } = require("../middleware/auth");
-const cookieParser = require("cookie-parser"); // Required for refresh cookie
-
-const appParser = express(); 
-// Ensure cookie parser runs before routes
-router.use(cookieParser());
-
 // Public routes
 router.post("/register", asyncHandler(authController.register));
 router.post("/login", asyncHandler(authController.login));

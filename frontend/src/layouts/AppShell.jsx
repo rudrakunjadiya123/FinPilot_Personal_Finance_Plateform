@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -25,6 +25,20 @@ export default function AppShell() {
   const { toggleChat, theme, toggleTheme } = useUIStore();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Close modal on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showLogoutModal) {
+        setShowLogoutModal(false);
+      }
+    };
+    if (showLogoutModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showLogoutModal]);
 
   if (isUserLoading) {
     return (
@@ -69,10 +83,10 @@ export default function AppShell() {
                   to={item.path}
                   end={item.path === '/app'}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-medium nav-hover ${
+                    `flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] nav-hover transition-colors ${
                       isActive 
-                        ? 'bg-accent-soft text-accent shadow-sm' 
-                        : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+                        ? 'bg-accent-soft text-accent-text font-semibold shadow-sm' 
+                        : 'font-medium text-ink-soft hover:bg-paper-sunken hover:text-ink'
                     }`
                   }
                 >
@@ -104,8 +118,8 @@ export default function AppShell() {
               </div>
             </div>
             <button 
-              onClick={logout} 
-              className="p-2 text-ink-faint hover:text-negative hover:bg-negative-soft/50 transition-all duration-200" 
+              onClick={() => setShowLogoutModal(true)} 
+              className="p-2 text-ink-faint hover:text-negative hover:bg-negative-soft/50 rounded-lg transition-all duration-200" 
               title="Sign out"
             >
               <LogOut className="w-[16px] h-[16px]" />
@@ -138,10 +152,10 @@ export default function AppShell() {
                   end={item.path === '/app'}
                   onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium ${
+                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-colors ${
                       isActive 
-                        ? 'bg-accent-soft text-accent' 
-                        : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+                        ? 'bg-accent-soft text-accent-text font-semibold' 
+                        : 'font-medium text-ink-soft hover:bg-paper-sunken hover:text-ink'
                     }`
                   }
                 >
@@ -150,6 +164,31 @@ export default function AppShell() {
                 </NavLink>
               ))}
             </nav>
+
+            {/* Mobile User Profile Footer */}
+            <div className="p-4 border-t border-border-default m-3 mt-auto rounded-xl bg-paper-sunken/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 truncate">
+                  <div className="w-9 h-9 rounded-full accent-gradient flex items-center justify-center text-white font-display font-semibold text-sm shrink-0 shadow-sm">
+                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  <div className="truncate">
+                    <span className="text-sm font-semibold text-ink truncate block">{user?.name || 'User'}</span>
+                    <span className="text-[11px] text-ink-faint truncate block">{user?.email || ''}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShowLogoutModal(true);
+                  }} 
+                  className="p-2 text-ink-faint hover:text-negative hover:bg-negative-soft/50 rounded-lg transition-all duration-200" 
+                  title="Sign out"
+                >
+                  <LogOut className="w-[16px] h-[16px]" />
+                </button>
+              </div>
+            </div>
           </aside>
         </>
       )}
@@ -205,6 +244,60 @@ export default function AppShell() {
           </button>
         </div>
       </main>
+
+      {/* ════ Logout Confirmation Modal Pop-up ════ */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" 
+            onClick={() => setShowLogoutModal(false)}
+          />
+
+          {/* Dialog Card */}
+          <div className="relative bg-paper-raised w-full max-w-sm rounded-2xl border border-border-default shadow-elevated p-6 animate-scale-in flex flex-col items-center text-center z-10">
+            {/* Top Accent Strip */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-negative to-warning rounded-t-2xl" />
+
+            {/* Warning / Signout Icon Badge */}
+            <div className="w-12 h-12 rounded-2xl bg-negative-soft text-negative flex items-center justify-center mb-4 mt-1">
+              <LogOut className="w-6 h-6 stroke-[2.2]" />
+            </div>
+
+            {/* Title */}
+            <h3 className="font-display font-bold text-lg text-ink">
+              Log out of FinPilot?
+            </h3>
+
+            {/* Description */}
+            <p className="text-xs text-ink-soft mt-2 leading-relaxed">
+              Are you sure you want to end your current session? You will need to sign back in with your credentials to access your financial dashboard.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 w-full mt-6">
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(false)}
+                className="py-2.5 px-4 rounded-xl text-xs font-semibold text-ink-soft bg-paper-sunken hover:bg-border-default border border-border-default transition-all duration-150"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  logout();
+                }}
+                className="py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-negative hover:opacity-90 shadow-sm transition-all duration-150 flex items-center justify-center gap-1.5"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Yes, Log Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ════ AI Chat Panel ════ */}
       <ChatPanel />

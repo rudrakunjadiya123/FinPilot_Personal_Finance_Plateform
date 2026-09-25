@@ -65,6 +65,20 @@ export function useLendBorrow() {
     }
   });
 
+  const deleteRecordMutation = useMutation({
+    mutationFn: async (id) => {
+      const { data } = await apiClient.delete(`/api/lendborrow/${id}`);
+      return data;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['lendBorrow'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['upcomingDues'] });
+      queryClient.invalidateQueries({ queryKey: ['cashFlow'] });
+      if (id) queryClient.removeQueries({ queryKey: ['lendBorrow', id] });
+    }
+  });
+
   return {
     records,
     isLoading,
@@ -75,12 +89,16 @@ export function useLendBorrow() {
     sendReminder: sendReminderMutation.mutateAsync,
     isSendingReminder: sendReminderMutation.isPending,
     changeInterestRate: changeInterestMutation.mutateAsync,
-    isChangingInterest: changeInterestMutation.isPending
+    isChangingInterest: changeInterestMutation.isPending,
+    deleteRecord: deleteRecordMutation.mutateAsync,
+    isDeleting: deleteRecordMutation.isPending,
   };
 }
 
 export function useLendBorrowRecord(id) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ['lendBorrow', id],
     queryFn: async () => {
       if (!id) return null;
@@ -89,4 +107,24 @@ export function useLendBorrowRecord(id) {
     },
     enabled: !!id,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.delete(`/api/lendborrow/${id}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lendBorrow'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['upcomingDues'] });
+      queryClient.invalidateQueries({ queryKey: ['cashFlow'] });
+      if (id) queryClient.removeQueries({ queryKey: ['lendBorrow', id] });
+    }
+  });
+
+  return {
+    ...query,
+    deleteRecord: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
+  };
 }

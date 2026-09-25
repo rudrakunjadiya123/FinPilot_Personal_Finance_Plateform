@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useEffect, createContext, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../services/apiClient';
 
@@ -6,7 +6,14 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const queryClient = useQueryClient();
-  const [token, setToken] = useState(localStorage.getItem('finpilot_token'));
+
+  // Clear any legacy tokens stored in localStorage to enforce pure cookie auth
+  useEffect(() => {
+    localStorage.removeItem('finpilot_token');
+    localStorage.removeItem('finpilot_refresh_token');
+    localStorage.removeItem('taskflow_token');
+    localStorage.removeItem('taskflow_user');
+  }, []);
 
   const { data: user, isLoading: isUserLoading } = useQuery({
     queryKey: ['me'],
@@ -14,17 +21,12 @@ export function AuthProvider({ children }) {
       try {
         const { data } = await apiClient.get('/api/auth/me');
         return data || null;
-      } catch (error) {
-        if (error.response?.status === 401) {
-          setToken(null);
-          localStorage.removeItem('finpilot_token');
-          localStorage.removeItem('finpilot_refresh_token');
-        }
-        return null; // Resolve cleanly
+      } catch {
+        return null; // Resolve cleanly when not authenticated
       }
     },
-    enabled: !!token,
     retry: false, // Do not spam retries for 401s
+    staleTime: 5 * 60 * 1000,
   });
 
   const loginMutation = useMutation({
@@ -33,10 +35,8 @@ export function AuthProvider({ children }) {
       return data;
     },
     onSuccess: (data) => {
-      setToken(data.accessToken);
-      localStorage.setItem('finpilot_token', data.accessToken);
-      if (data.refreshToken) {
-        localStorage.setItem('finpilot_refresh_token', data.refreshToken);
+      if (data.user) {
+        queryClient.setQueryData(['me'], data.user);
       }
       queryClient.invalidateQueries({ queryKey: ['me'] });
     }
@@ -48,27 +48,31 @@ export function AuthProvider({ children }) {
       return data;
     },
     onSuccess: (data) => {
-      setToken(data.accessToken);
-      localStorage.setItem('finpilot_token', data.accessToken);
-      if (data.refreshToken) {
-        localStorage.setItem('finpilot_refresh_token', data.refreshToken);
+      if (data.user) {
+        queryClient.setQueryData(['me'], data.user);
       }
       queryClient.invalidateQueries({ queryKey: ['me'] });
     }
   });
 
-  const logout = () => {
-    const storedRefreshToken = localStorage.getItem('finpilot_refresh_token');
-    setToken(null);
-    localStorage.removeItem('finpilot_token');
-    localStorage.removeItem('finpilot_refresh_token');
-    apiClient.post('/api/auth/logout', { refreshToken: storedRefreshToken }).catch(() => {});
-    queryClient.clear();
+  const logout = async () => {
+    try {
+      await apiClient.post('/api/auth/logout');
+    } catch {
+      // Ignore network errors on logout
+    } finally {
+      queryClient.setQueryData(['me'], null);
+      queryClient.clear();
+      localStorage.removeItem('finpilot_token');
+      localStorage.removeItem('finpilot_refresh_token');
+      localStorage.removeItem('taskflow_token');
+      localStorage.removeItem('taskflow_user');
+    }
   };
 
   const value = {
     user,
-    token,
+    token: null, // Tokens are safely handled via HttpOnly cookies
     isUserLoading,
     isAuthenticated: !!user,
     login: loginMutation.mutateAsync,

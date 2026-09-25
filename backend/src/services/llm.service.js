@@ -138,10 +138,9 @@ const functionDeclarations = [
  * @param {string} userMessage - The user's question
  * @param {string} financialContext - Redacted financial context string
  * @param {Array} chatHistory - Previous messages [{role, content}]
- * @param {Array} functionResponses - Internal loop tracking function execution
- * @returns {Promise<Object>} Object containing either assistant text or a function call request
+ * @returns {Promise<Object>} Object containing either assistant text or a function call request + active chat
  */
-async function getChatCompletion(userMessage, financialContext, chatHistory = [], functionResponses = []) {
+async function getChatCompletion(userMessage, financialContext, chatHistory = []) {
   const ai = getGenAI();
   const model = ai.getGenerativeModel({
     model: "gemini-3.1-flash-lite",
@@ -149,13 +148,29 @@ async function getChatCompletion(userMessage, financialContext, chatHistory = []
     tools: [{ functionDeclarations }],
   });
 
-  // Append function responses to the history array so Gemini knows the result of the tool it asked for
-  const history = chatHistory.map((msg) => ({
-    role: msg.role === "assistant" ? "model" : "user",
-    parts: [{ text: msg.content }],
-  })).concat(functionResponses);
+  // Ensure history alternates properly: user -> model -> user -> model
+  // Gemini requires: 1) First turn MUST be "user", 2) strictly alternating roles, 3) non-empty content
+  const sanitizedHistory = [];
+  let expectedRole = "user";
 
-  const chat = model.startChat({ history });
+  for (const msg of chatHistory) {
+    if (!msg || !msg.content || typeof msg.content !== "string" || !msg.content.trim()) continue;
+    const role = msg.role === "assistant" ? "model" : "user";
+    if (role === expectedRole) {
+      sanitizedHistory.push({
+        role,
+        parts: [{ text: msg.content.trim() }],
+      });
+      expectedRole = expectedRole === "user" ? "model" : "user";
+    }
+  }
+
+  // If the last message in history is a user message, remove it because sendMessage will send the current user prompt
+  if (sanitizedHistory.length > 0 && sanitizedHistory[sanitizedHistory.length - 1].role === "user") {
+    sanitizedHistory.pop();
+  }
+
+  const chat = model.startChat({ history: sanitizedHistory });
 
   const contextBlock = financialContext
     ? `\n\n--- USER'S FINANCIAL CONTEXT ---\n${financialContext}\n--- END CONTEXT ---\n\n`
@@ -167,10 +182,53 @@ async function getChatCompletion(userMessage, financialContext, chatHistory = []
   
   const functionCall = result.response.functionCalls()?.[0];
   if (functionCall) {
-    return { type: "function_call", functionCall };
+    return { type: "function_call", functionCall, chat };
   }
 
-  return { type: "text", text: result.response.text() };
+  let text = "";
+  try {
+    text = result.response.text();
+  } catch {
+    const candidate = result.response.candidates?.[0];
+    text = candidate?.content?.parts?.find(p => p.text)?.text || "I was unable to formulate a response. Please try again.";
+  }
+
+  return { type: "text", text, chat };
 }
 
-module.exports = { getChatCompletion };
+/**
+ * Send tool execution results back to the active Gemini chat session.
+ *
+ * @param {Object} chat - The active chat session returned by getChatCompletion
+ * @param {string} functionName - Name of the function that was called
+ * @param {string|Object} responseData - The tool output (redacted)
+ * @returns {Promise<Object>}
+ */
+async function sendFunctionResponse(chat, functionName, responseData) {
+  const result = await chat.sendMessage([
+    {
+      functionResponse: {
+        name: functionName,
+        response: { result: typeof responseData === "string" ? responseData : JSON.stringify(responseData) },
+      },
+    },
+  ]);
+
+  const functionCall = result.response.functionCalls()?.[0];
+  if (functionCall) {
+    return { type: "function_call", functionCall, chat };
+  }
+
+  let text = "";
+  try {
+    text = result.response.text();
+  } catch {
+    const candidate = result.response.candidates?.[0];
+    text = candidate?.content?.parts?.find(p => p.text)?.text || "Tool executed successfully.";
+  }
+
+  return { type: "text", text, chat };
+}
+
+module.exports = { getChatCompletion, sendFunctionResponse };
+

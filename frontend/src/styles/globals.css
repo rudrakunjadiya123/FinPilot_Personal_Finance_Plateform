@@ -13,6 +13,7 @@
   --color-accent: var(--color-accent-val);
   --color-accent-hover: var(--color-accent-hover-val);
   --color-accent-soft: var(--color-accent-soft-val);
+  --color-accent-text: var(--color-accent-text-val);
   --color-positive: var(--color-positive-val);
   --color-positive-soft: var(--color-positive-soft-val);
   --color-negative: var(--color-negative-val);
@@ -21,6 +22,10 @@
   --color-warning-soft: var(--color-warning-soft-val);
   --color-info: var(--color-info-val);
   --color-info-soft: var(--color-info-soft-val);
+  --color-neutral: var(--color-neutral-val);
+  --color-neutral-soft: var(--color-neutral-soft-val);
+  --color-purple: var(--color-purple-val);
+  --color-purple-soft: var(--color-purple-soft-val);
   --color-border-default: var(--color-line-val);
   --color-border-strong: var(--color-line-strong-val);
 }
@@ -33,51 +38,67 @@
     --font-body: 'Inter', -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Courier New', monospace;
 
-    /* ═══ Light Mode Core Palette ═══ */
-    --color-ink-val: #1B2430;
-    --color-ink-soft-val: #6B7280;
-    --color-ink-faint-val: #9CA3AF;
+    /* ═══ Light Mode Core Palette (WCAG Compliant) ═══ */
+    --color-ink-val: #1A1A1A;
+    --color-ink-soft-val: #52525B;
+    --color-ink-faint-val: #6B6B76;
 
-    --color-paper-val: #F5F5F7;
+    --color-paper-val: #F7F7F5;
     --color-paper-raised-val: #FFFFFF;
-    --color-paper-sunken-val: #F0F0F2;
+    --color-paper-sunken-val: #F1F1EF;
     --color-sidebar-val: #FFFFFF;
 
     /* ── Accent (Orange) ── */
-    --color-accent-val: #F7931A;
-    --color-accent-hover-val: #FF9F33;
-    --color-accent-soft-val: #FFF3E0;
-    --color-accent-glow: rgba(247, 147, 26, 0.15);
-    --color-accent-gradient: linear-gradient(135deg, #F7931A, #FFB347);
+    --color-accent-val: #F97316;
+    --color-accent-hover-val: #EA6A0C;
+    --color-accent-soft-val: #FEEBDD;
+    --color-accent-text-val: #C2410C;
+    --color-accent-glow: rgba(249, 115, 22, 0.15);
+    --color-accent-gradient: linear-gradient(135deg, #F97316, #FB923C);
 
-    /* ── Semantic Colors ── */
-    --color-positive-val: #10B981;
-    --color-positive-soft-val: #D1FAE5;
-    --color-negative-val: #EF4444;
+    /* ── Semantic Colors (>= 4.5:1 text, >= 3:1 badge pairs) ── */
+    --color-positive-val: #15803D;
+    --color-positive-soft-val: #DCFCE7;
+    --color-negative-val: #B91C1C;
     --color-negative-soft-val: #FEE2E2;
-    --color-warning-val: #F59E0B;
+    --color-warning-val: #A16207;
     --color-warning-soft-val: #FEF3C7;
-    --color-info-val: #3B82F6;
+    --color-info-val: #1D4ED8;
     --color-info-soft-val: #DBEAFE;
+    --color-neutral-val: #3F3F46;
+    --color-neutral-soft-val: #F1F1EF;
+    --color-purple-val: #6D28D9;
+    --color-purple-soft-val: #EDE9FE;
 
     /* ── Borders ── */
-    --color-line-val: #E5E7EB;
-    --color-line-strong-val: #D1D5DB;
+    --color-line-val: #E5E5E2;
+    --color-line-strong-val: #D4D4D0;
 
-    /* ── Semantic Aliases ── */
-    --color-text-primary: var(--color-ink);
-    --color-text-secondary: var(--color-ink-soft);
-    --color-text-muted: var(--color-ink-faint);
-    --color-bg-app: var(--color-paper);
-    --color-bg-card: var(--color-paper-raised);
-    --color-bg-input: var(--color-paper-sunken);
-    --color-bg-sidebar: var(--color-sidebar);
-    --color-accent-primary: var(--color-accent);
-    --color-accent-primary-hover: var(--color-accent-hover);
-    --color-accent-positive: var(--color-positive);
-    --color-accent-alert: var(--color-negative);
-    --color-border-default: var(--color-line);
-    --color-border-strong: var(--color-line-strong);
+    /* ── Direct Token Aliases per Spec ── */
+    --color-text-primary: var(--color-ink-val);
+    --color-text-secondary: var(--color-ink-soft-val);
+    --color-text-muted: var(--color-ink-faint-val);
+    --color-bg-app: var(--color-paper-val);
+    --color-bg-card: var(--color-paper-raised-val);
+    --color-bg-input: var(--color-paper-sunken-val);
+    --color-bg-sidebar: var(--color-sidebar-val);
+    --color-border: var(--color-line-val);
+    --color-primary: var(--color-accent-val);
+    --color-primary-hover: var(--color-accent-hover-val);
+    --color-primary-tint-bg: var(--color-accent-soft-val);
+    --color-primary-text: var(--color-accent-text-val);
+    --color-success-fg: var(--color-positive-val);
+    --color-success-bg: var(--color-positive-soft-val);
+    --color-danger-fg: var(--color-negative-val);
+    --color-danger-bg: var(--color-negative-soft-val);
+    --color-warning-fg: var(--color-warning-val);
+    --color-warning-bg: var(--color-warning-soft-val);
+    --color-info-fg: var(--color-info-val);
+    --color-info-bg: var(--color-info-soft-val);
+    --color-neutral-fg: var(--color-neutral-val);
+    --color-neutral-bg: var(--color-neutral-soft-val);
+    --color-purple-fg: var(--color-purple-val);
+    --color-purple-bg: var(--color-purple-soft-val);
 
     /* ── Shape & Shadows ── */
     --radius-sm: 6px;
@@ -89,15 +110,15 @@
     --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
     --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
-    --shadow-glow: 0 0 20px rgba(247, 147, 26, 0.15);
+    --shadow-glow: 0 0 20px rgba(249, 115, 22, 0.15);
 
     /* ── Chart Colors ── */
-    --chart-1: #F7931A;
-    --chart-2: #FFB347;
-    --chart-3: #10B981;
-    --chart-4: #3B82F6;
-    --chart-5: #8B5CF6;
-    --chart-6: #EC4899;
+    --chart-1: #F97316;
+    --chart-2: #FB923C;
+    --chart-3: #15803D;
+    --chart-4: #1D4ED8;
+    --chart-5: #6D28D9;
+    --chart-6: #B91C1C;
   }
 
   /* ═══════════════════════════════════════════════
@@ -116,6 +137,7 @@
     --color-accent-val: #F7931A;
     --color-accent-hover-val: #FFB347;
     --color-accent-soft-val: #2A1F0E;
+    --color-accent-text-val: #FB923C;
     --color-accent-glow: rgba(247, 147, 26, 0.20);
 
     --color-positive-val: #34D399;
@@ -126,6 +148,10 @@
     --color-warning-soft-val: #78350F;
     --color-info-val: #60A5FA;
     --color-info-soft-val: #1E3A5F;
+    --color-neutral-val: #D4D4D8;
+    --color-neutral-soft-val: #27272A;
+    --color-purple-val: #A78BFA;
+    --color-purple-soft-val: #2E1065;
 
     --color-line-val: #2A2A4A;
     --color-line-strong-val: #3A3A5A;

@@ -45,7 +45,7 @@ export default function MarkdownRenderer({ content }) {
         ol: ({ children }) => (
           <ol className="space-y-1.5 my-2 last:mb-0 list-decimal list-inside">{children}</ol>
         ),
-        li: ({ children, ordered }) => (
+        li: ({ children }) => (
           <li className="text-[13px] leading-[1.6] text-ink flex items-start gap-2">
             <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-accent shrink-0 inline-block" />
             <span className="flex-1">{children}</span>
@@ -53,7 +53,7 @@ export default function MarkdownRenderer({ content }) {
         ),
 
         // ── Code ──
-        code: ({ inline, className, children }) => {
+        code: ({ inline, children }) => {
           if (inline) {
             return (
               <code className="bg-paper-sunken border border-border-default text-accent text-xs px-1.5 py-0.5 rounded-md font-mono">

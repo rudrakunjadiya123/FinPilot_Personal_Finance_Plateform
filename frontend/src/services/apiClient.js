@@ -6,30 +6,19 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: true // Required to send httpOnly cookies (refreshToken)
-});
-
-// Intercept requests to push token natively from localStorage
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('finpilot_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
+  withCredentials: true // Required to send httpOnly cookies (accessToken, refreshToken)
 });
 
 // Flag to prevent infinite retry loops
 let isRefreshing = false;
 let failedQueue = [];
 
-const processQueue = (error, token = null) => {
+const processQueue = (error) => {
   failedQueue.forEach(prom => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve();
     }
   });
   failedQueue = [];
@@ -42,14 +31,19 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     
     // If we receive a 401 on a route that is NOT the login or refresh route
-    if (error.response && error.response.status === 401 && !originalRequest._retry && originalRequest.url !== '/api/auth/refresh' && originalRequest.url !== '/api/auth/login') {
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !originalRequest._retry &&
+      originalRequest.url !== '/api/auth/refresh' &&
+      originalRequest.url !== '/api/auth/login'
+    ) {
       
       if (isRefreshing) {
         // If we are already refreshing, queue the requests
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
-        }).then(token => {
-          originalRequest.headers.Authorization = 'Bearer ' + token;
+        }).then(() => {
           return apiClient(originalRequest);
         }).catch(err => {
           return Promise.reject(err);
@@ -60,31 +54,25 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Attempt to refresh token (using cookie + body fallback for cross-domain support)
-        const storedRefreshToken = localStorage.getItem('finpilot_refresh_token');
-        const { data } = await axios.post(
+        // Attempt to refresh token using httpOnly cookie (sent automatically via withCredentials)
+        await axios.post(
           `${apiClient.defaults.baseURL}/api/auth/refresh`,
-          { refreshToken: storedRefreshToken },
+          {},
           { withCredentials: true }
         );
 
-        const newAccessToken = data.accessToken;
-        localStorage.setItem('finpilot_token', newAccessToken);
-        if (data.refreshToken) {
-          localStorage.setItem('finpilot_refresh_token', data.refreshToken);
-        }
-        
-        apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
-        originalRequest.headers.Authorization = 'Bearer ' + newAccessToken;
-        
-        processQueue(null, newAccessToken);
+        processQueue(null);
         return apiClient(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
+        processQueue(refreshError);
         
-        // If refresh fails (e.g. refresh token expired after 7 days), clear session and redirect
+        // Clean up any legacy localStorage tokens if present
         localStorage.removeItem('finpilot_token');
         localStorage.removeItem('finpilot_refresh_token');
+        localStorage.removeItem('taskflow_token');
+        localStorage.removeItem('taskflow_user');
+
+        // If refresh fails (e.g. refresh token expired), redirect to login
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }

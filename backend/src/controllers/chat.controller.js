@@ -6,7 +6,7 @@
 
 const prisma = require("../config/db");
 const { AppError } = require("../middleware/errorHandler");
-const { getChatCompletion } = require("../services/llm.service");
+const { getChatCompletion, sendFunctionResponse } = require("../services/llm.service");
 const { semanticSearch, getStructuredContext, formatContextForLLM } = require("../services/rag.service");
 const { redactPII, reinjectPII } = require("../utils/redaction");
 const { getDebtStrategies } = require("../services/optimization.service");
@@ -56,13 +56,14 @@ async function ask(req, res) {
   // 4. Redact PII from context before sending to LLM
   const { redactedText, piiMap } = redactPII(contextText, piiEntries);
 
-  // 5. Fetch conversation history for multi-turn context
+  // 5. Fetch conversation history for multi-turn context (latest 20 messages)
   const previousMessages = await prisma.chatMessage.findMany({
     where: { sessionId: session.id },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     take: 20, // Last 20 messages for context window management
     select: { role: true, content: true },
   });
+  previousMessages.reverse();
 
   // Redact PII from history too
   const redactedHistory = previousMessages.map((msg) => ({
@@ -161,31 +162,9 @@ async function ask(req, res) {
       // stringify and redact result to prevent leak
       let rawResultStr = JSON.stringify(toolExecutionResult);
       const redactedToolOutput = redactPII(rawResultStr, piiEntries).redactedText;
-      
-      const functionResponseBlock = [
-        {
-          role: "model",
-          parts: [{ functionCall: call }]
-        },
-        {
-          role: "user",
-          parts: [{
-            functionResponse: {
-              name: call.name,
-              response: { result: redactedToolOutput }
-            }
-          }]
-        }
-      ];
 
-      // Second LLM pass to generate natural explanation
-      const secondPass = await getChatCompletion(
-        redactPII(message, piiEntries).redactedText,
-        redactedText,
-        redactedHistory.slice(0, -1),
-        functionResponseBlock
-      );
-      
+      // Send function response directly back to the active Gemini chat session
+      const secondPass = await sendFunctionResponse(result.chat, call.name, redactedToolOutput);
       assistantResponse = secondPass.text;
     } else {
       assistantResponse = result.text;
@@ -193,7 +172,7 @@ async function ask(req, res) {
 
     finalResponse = reinjectPII(assistantResponse, piiMap);
   } catch (error) {
-    console.error("[Chat] LLM call failed:", error.message);
+    console.error("[Chat] LLM call failed:", error);
     finalResponse = "I'm sorry, I'm having trouble connecting to my AI service right now. Please try again in a moment.";
   }
 

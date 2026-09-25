@@ -14,6 +14,9 @@
  * @returns {{ redactedText: string, piiMap: Map<string, string> }}
  */
 function redactPII(text, piiEntries = []) {
+  if (!text || typeof text !== "string") {
+    return { redactedText: text || "", piiMap: new Map() };
+  }
   const piiMap = new Map();
   let redactedText = text;
   let counter = 1;
@@ -52,7 +55,9 @@ function redactPII(text, piiEntries = []) {
  * @returns {string} Text with original PII restored
  */
 function reinjectPII(text, piiMap) {
+  if (!text || typeof text !== "string") return text || "";
   let result = text;
+  if (!piiMap) return result;
   for (const [placeholder, original] of piiMap) {
     result = result.replace(new RegExp(escapeRegex(placeholder), "g"), original);
   }

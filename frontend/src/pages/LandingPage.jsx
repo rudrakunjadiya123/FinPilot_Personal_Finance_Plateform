@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowRight, Shield, Brain, BarChart3, Wallet, 
-  TrendingUp, CreditCard, PiggyBank, Users, FileText,
+  ArrowRight, Brain, BarChart3, Wallet, 
+  TrendingUp, CreditCard, Users, FileText,
   Sparkles, ChevronDown, Star, Zap, Lock, Globe,
-  MessageCircle, Target, Bell, ArrowUpRight
+  Target
 } from 'lucide-react';
 
 /* ────────────────────────────────────────────────────────

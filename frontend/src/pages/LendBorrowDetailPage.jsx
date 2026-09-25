@@ -1,35 +1,53 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useLendBorrowRecord } from '../hooks/useLendBorrow';
 import StatusPill from '../components/primitives/StatusPill';
 import RepaymentLogModal from '../components/RepaymentLogModal';
 import ChangeInterestModal from '../components/ChangeInterestModal';
-import { ChevronLeft, PlusCircle, Percent, History, CheckCircle2, Calendar, Mail, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { formatCurrency, formatDate } from '../utils/formatters';
+import { 
+  ChevronLeft, PlusCircle, Percent, History, 
+  Calendar, Mail, ArrowUpRight, ArrowDownLeft, Clock, Trash2 
+} from 'lucide-react';
 
 export default function LendBorrowDetailPage() {
   const { id } = useParams();
-  const { data: record, isLoading } = useLendBorrowRecord(id);
+  const navigate = useNavigate();
+  const { data: record, isLoading, deleteRecord, isDeleting } = useLendBorrowRecord(id);
 
   const [isRepayModalOpen, setIsRepayModalOpen] = useState(false);
   const [isInterestModalOpen, setIsInterestModalOpen] = useState(false);
 
+  const handleDelete = async () => {
+    const personName = record?.personName || 'this record';
+    if (window.confirm(`Are you sure you want to delete the record for "${personName}"? All logged repayment history for this transaction will be permanently removed.`)) {
+      try {
+        await deleteRecord();
+        navigate('/app/lend-borrow');
+      } catch (err) {
+        console.error("Failed to delete record", err);
+        alert("Failed to delete record. Please try again.");
+      }
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="text-sm text-ink-soft p-6 flex items-center gap-2">
-        <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full" style={{ animation: 'spin 0.8s linear infinite' }} />
-        Loading record details...
+      <div className="text-sm text-ink-soft p-12 flex items-center justify-center gap-3">
+        <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <span>Loading ledger record...</span>
       </div>
     );
   }
 
   if (!record) {
     return (
-      <div className="flex flex-col min-h-full space-y-6 p-6">
-        <Link to="/app/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors group">
+      <div className="flex flex-col min-h-full space-y-6 pb-12">
+        <Link to="/app/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-xs font-semibold w-fit transition-colors group">
           <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          Back to Records
+          <span>Back to Records</span>
         </Link>
-        <div className="text-sm text-negative p-4 bg-negative-soft rounded-lg border border-negative/20">
+        <div className="text-sm text-negative p-6 bg-negative-soft rounded-2xl border border-negative/20">
           Record not found or access denied.
         </div>
       </div>
@@ -45,7 +63,7 @@ export default function LendBorrowDetailPage() {
   }, 0);
 
   const totalPrincipalRepaid = record.totalRepaid !== undefined 
-    ? record.totalRepaid 
+    ? Number(record.totalRepaid) 
     : repayments.reduce((sum, r) => {
         if (r.paymentType === 'interest_only') return sum;
         if (r.paymentType === 'principal_only' && Number(r.principalAmount) === 0) return sum + Number(r.amount);
@@ -53,164 +71,217 @@ export default function LendBorrowDetailPage() {
       }, 0);
 
   const remaining = record.remainingBalance !== undefined 
-    ? record.remainingBalance 
+    ? Number(record.remainingBalance) 
     : Math.max(0, amount - totalPrincipalRepaid);
 
   const isLent = record.type === 'lent';
-  const isOverdue = new Date(record.expectedReturnDate) < new Date() && remaining > 0;
+  const dueDate = record.expectedReturnDate ? new Date(record.expectedReturnDate) : null;
+  const isOverdue = dueDate && dueDate < new Date() && remaining > 0;
   const statusKey = remaining === 0 ? 'repaid' : (isOverdue ? 'overdue' : (totalPrincipalRepaid > 0 ? 'partial' : 'pending'));
 
+  const progressPercent = amount > 0 ? Math.min(100, Math.round((totalPrincipalRepaid / amount) * 100)) : 0;
+
   return (
-    <div className="flex flex-col min-h-full space-y-6 pb-12">
+    <div className="flex flex-col min-h-full space-y-6 pb-20 font-body">
       
-      {/* Back link */}
-      <Link to="/app/lend-borrow" className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-sm font-medium w-fit transition-colors duration-150 group">
-        <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-150" />
-        Back to Ledger
-      </Link>
+      {/* ── Top Navigation Bar ── */}
+      <div className="flex justify-between items-center w-full">
+        <Link 
+          to="/app/lend-borrow" 
+          className="flex items-center gap-1.5 text-ink-soft hover:text-accent text-xs font-semibold transition-colors duration-150 group"
+        >
+          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Back to Peer Ledger</span>
+        </Link>
+        
+        <button 
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="flex items-center gap-1.5 text-negative hover:bg-negative-soft px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 border border-negative/20 hover:border-negative/40"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>{isDeleting ? "Deleting..." : "Delete Record"}</span>
+        </button>
+      </div>
 
-      {/* Profile Header */}
-      <div className="bg-paper-raised border border-border-default rounded-xl p-6 shadow-card flex flex-col md:flex-row justify-between gap-6 relative overflow-hidden animate-slide-up">
-        <div className="absolute top-0 left-0 right-0 h-[3px] accent-gradient" />
-
-        <div className="flex flex-col space-y-3">
+      {/* Hero Header Card */}
+      <div className="bg-paper-raised border border-border-default rounded-2xl p-6 shadow-card space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border-default">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isLent ? 'bg-accent-soft' : 'bg-info-soft'}`}>
-              {isLent ? <ArrowUpRight className="w-5 h-5 text-accent" /> : <ArrowDownLeft className="w-5 h-5 text-info" />}
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              isLent ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-blue-50 dark:bg-blue-950/40 text-blue-600'
+            }`}>
+              {isLent ? <ArrowUpRight className="w-6 h-6" /> : <ArrowDownLeft className="w-6 h-6" />}
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold text-ink tracking-tight">{record.personName}</h1>
-              <StatusPill status={statusKey} label={isOverdue && remaining > 0 ? 'Overdue' : null} />
+              <div className="flex items-center gap-2">
+                <h1 className="font-display text-xl sm:text-2xl font-bold text-ink tracking-tight">
+                  {record.personName}
+                </h1>
+                <StatusPill status={statusKey} size="xs" />
+              </div>
+              <p className="text-xs text-ink-soft mt-0.5">
+                {isLent ? 'You lent money to this individual' : 'You borrowed money from this individual'}
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
-            <span className="inline-flex items-center gap-1.5 bg-paper-sunken px-2.5 py-1 rounded-full border border-border-default text-ink-soft">
-              <Mail className="w-3 h-3 text-accent" /> {record.personEmail}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {record.personEmail && (
+              <span className="inline-flex items-center gap-1.5 bg-paper-sunken px-3 py-1 rounded-xl border border-border-default text-ink-soft font-mono">
+                <Mail className="w-3.5 h-3.5 text-accent" /> {record.personEmail}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5 bg-paper-sunken px-3 py-1 rounded-xl border border-border-default text-ink-soft">
+              <Calendar className="w-3.5 h-3.5 text-accent" /> Disbursed: {formatDate(record.dateGiven)}
             </span>
-            <span className="inline-flex items-center gap-1.5 bg-paper-sunken px-2.5 py-1 rounded-full border border-border-default text-ink-soft">
-              <Calendar className="w-3 h-3 text-accent" /> Given: {new Date(record.dateGiven).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </span>
-            <span className="inline-flex items-center gap-1.5 bg-paper-sunken px-2.5 py-1 rounded-full border border-border-default text-ink-soft">
-              <Calendar className="w-3 h-3 text-negative" /> Return: {new Date(record.expectedReturnDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            <span className="inline-flex items-center gap-1.5 bg-paper-sunken px-3 py-1 rounded-xl border border-border-default text-ink-soft">
+              <Clock className="w-3.5 h-3.5 text-negative" /> Due: {record.expectedReturnDate ? formatDate(record.expectedReturnDate) : 'Open'}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center self-start md:self-center">
-          <span className={`px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${isLent ? 'bg-accent-soft text-accent' : 'bg-info-soft text-info'}`}>
-            {isLent ? 'You Lent' : 'You Borrowed'}
-          </span>
+        {/* 4 Numbers Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-paper-sunken p-4 rounded-xl border border-border-default">
+            <span className="text-[10px] font-semibold text-ink-faint uppercase block">Total Principal</span>
+            <div className="text-2xl font-mono font-bold text-ink mt-1">
+              {formatCurrency(amount)}
+            </div>
+            <span className="text-[10px] text-ink-soft mt-0.5 block">Original sanctioned sum</span>
+          </div>
+
+          <div className="bg-paper-sunken p-4 rounded-xl border border-border-default">
+            <span className="text-[10px] font-semibold text-ink-faint uppercase block">
+              {isLent ? 'Pending Receivable' : 'Pending Payable'}
+            </span>
+            <div className={`text-2xl font-mono font-bold mt-1 ${
+              remaining === 0 ? 'text-positive' : isOverdue ? 'text-negative' : 'text-ink'
+            }`}>
+              {formatCurrency(remaining)}
+            </div>
+            <span className="text-[10px] text-ink-soft mt-0.5 block">
+              {remaining === 0 ? 'Zero outstanding' : 'Remaining balance'}
+            </span>
+          </div>
+
+          <div className="bg-paper-sunken p-4 rounded-xl border border-border-default">
+            <span className="text-[10px] font-semibold text-ink-faint uppercase block">Interest Rate</span>
+            <div className="text-2xl font-mono font-bold text-ink mt-1">
+              {Number(record.interestRate || 0)}% <span className="text-xs font-normal text-ink-faint">({record.interestType || 'none'})</span>
+            </div>
+            <span className="text-[10px] text-ink-soft mt-0.5 block">Accrued: {formatCurrency(record.interestAccrued || 0)}</span>
+          </div>
+
+          <div className="bg-paper-sunken p-4 rounded-xl border border-border-default">
+            <span className="text-[10px] font-semibold text-ink-faint uppercase block">Interest Paid</span>
+            <div className="text-2xl font-mono font-bold text-positive mt-1">
+              {formatCurrency(totalInterestPaid)}
+            </div>
+            <span className="text-[10px] text-ink-soft mt-0.5 block">Cumulative interest serviced</span>
+          </div>
+        </div>
+
+        {/* Repayment Progress Bar */}
+        <div className="p-4 bg-paper-sunken rounded-xl border border-border-default space-y-2">
+          <div className="flex justify-between items-center text-xs font-medium">
+            <span className="text-ink">Settlement Progress</span>
+            <span className="font-mono font-bold text-ink">{progressPercent}% ({formatCurrency(totalPrincipalRepaid)} Repaid)</span>
+          </div>
+          <div className="w-full h-2.5 bg-paper rounded-full overflow-hidden">
+            <div 
+              className={`h-full rounded-full transition-all duration-700 ${
+                remaining === 0 ? 'bg-positive' : isOverdue ? 'bg-negative' : 'bg-accent'
+              }`}
+              style={{ width: `${progressPercent}%` }} 
+            />
+          </div>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <button
+            onClick={() => setIsRepayModalOpen(true)}
+            className="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5"
+          >
+            <PlusCircle className="w-4 h-4" /> Record Repayment
+          </button>
+
+          <button
+            onClick={() => setIsInterestModalOpen(true)}
+            className="bg-paper-sunken hover:bg-paper-raised border border-border-default text-ink px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+          >
+            <Percent className="w-3.5 h-3.5 text-accent" /> Modify Interest
+          </button>
+
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="text-negative hover:bg-negative-soft border border-negative/20 hover:border-negative/40 px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{isDeleting ? "Deleting..." : "Delete"}</span>
+          </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Amount', value: amount, color: 'text-ink', accent: 'bg-accent' },
-          { label: 'Interest Paid', value: totalInterestPaid, color: 'text-positive', accent: 'bg-positive' },
-          { label: 'Interest Accrued', value: Number(record.interestAccrued || 0), color: 'text-warning', accent: 'bg-warning', sub: record.interestRate ? `${record.interestRate}% (${record.interestType || 'simple'})` : null },
-          { label: 'Remaining', value: remaining, color: remaining === 0 ? 'text-positive' : 'text-negative', accent: remaining === 0 ? 'bg-positive' : 'bg-negative' },
-        ].map((card, i) => (
-          <div key={i} className="bg-paper-raised border border-border-default rounded-xl p-4 shadow-card card-hover relative overflow-hidden">
-            <div className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full ${card.accent}`} />
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint mb-1">{card.label}</p>
-            <p className={`text-xl font-mono font-bold tracking-tight ${card.color}`}>₹{card.value.toLocaleString("en-IN")}</p>
-            {card.sub && <span className="text-[10px] text-ink-faint font-medium mt-0.5 block">{card.sub}</span>}
-          </div>
-        ))}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap items-center gap-3 bg-paper-raised border border-border-default rounded-xl p-4 shadow-card">
-        <button
-          onClick={() => setIsRepayModalOpen(true)}
-          className="accent-gradient hover:shadow-glow text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 btn-press"
-        >
-          <PlusCircle className="w-4 h-4" /> Log Transaction
-        </button>
-
-        <button
-          onClick={() => setIsInterestModalOpen(true)}
-          className="bg-paper-sunken hover:bg-paper border border-border-strong text-ink px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 btn-press"
-        >
-          <Percent className="w-4 h-4 text-accent" /> Change Interest
-        </button>
-
-        {remaining === 0 && (
-          <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-bold text-positive bg-positive-soft border border-positive/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
-            <CheckCircle2 className="w-4 h-4" /> Fully Settled
-          </span>
-        )}
-      </div>
-
-      {/* Transaction History */}
-      <div className="bg-paper-raised border border-border-default rounded-xl overflow-hidden shadow-card">
+      {/* Transaction History Section */}
+      <div className="bg-paper-raised border border-border-default rounded-2xl overflow-hidden shadow-card">
         <div className="px-6 py-4 border-b border-border-default flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-accent-soft flex items-center justify-center">
-              <History className="w-4 h-4 text-accent" />
-            </div>
-            <h3 className="font-display font-bold text-base text-ink">Transaction History ({repayments.length})</h3>
+            <History className="w-4 h-4 text-accent" />
+            <h3 className="font-display font-bold text-base text-ink">
+              Repayment History ({repayments.length})
+            </h3>
           </div>
-          <span className="text-[10px] text-ink-faint font-mono uppercase tracking-wider">
-            {isLent ? 'Collected' : 'Paid Back'}
+          <span className="text-xs text-ink-soft">
+            {isLent ? 'Funds Received' : 'Funds Returned'}
           </span>
         </div>
 
         {repayments.length === 0 ? (
           <div className="p-12 text-center flex flex-col items-center justify-center">
-            <div className="w-12 h-12 rounded-2xl bg-paper-sunken flex items-center justify-center mb-3">
-              <History className="w-6 h-6 text-ink-faint" />
-            </div>
-            <p className="text-sm font-semibold text-ink-soft">No transactions recorded yet</p>
-            <p className="text-xs text-ink-faint mt-1">Use the "Log Transaction" button above to record a repayment.</p>
+            <History className="w-8 h-8 text-ink-faint mb-2" />
+            <p className="text-xs font-medium text-ink-soft">No repayment transactions logged yet.</p>
+            <p className="text-[11px] text-ink-faint mt-0.5">Use "Record Repayment" to log incoming or outgoing installments.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto max-h-[500px]">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-paper-sunken text-ink-faint font-semibold text-[10px] tracking-wider uppercase border-b border-border-default sticky top-0 z-10">
+          <div className="overflow-x-auto max-h-[460px]">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-paper-sunken text-ink-faint font-semibold uppercase tracking-wider border-b border-border-default sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3">Date</th>
-                  <th className="px-6 py-3">Allocation</th>
+                  <th className="px-6 py-3">Type</th>
                   <th className="px-6 py-3">Mode</th>
                   <th className="px-6 py-3">Reference</th>
                   <th className="px-6 py-3 text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-default/50">
+              <tbody className="divide-y divide-border-default bg-paper-raised text-ink">
                 {repayments.map((rep) => {
-                  const repDate = new Date(rep.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
                   const isIntOnly = rep.paymentType === 'interest_only';
                   const isPrincInt = rep.paymentType === 'principal_interest';
-                  const pAmt = Number(rep.principalAmount || 0);
-                  const iAmt = Number(rep.interestAmount || (isIntOnly ? rep.amount : 0));
 
                   return (
-                    <tr key={rep.id} className="hover:bg-accent-soft/30 transition-colors duration-100">
-                      <td className="px-6 py-3.5 whitespace-nowrap font-mono text-ink-soft text-xs">{repDate}</td>
-                      <td className="px-6 py-3.5 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          isIntOnly ? 'bg-warning-soft text-warning' :
-                          isPrincInt ? 'bg-info-soft text-info' :
-                          'bg-accent-soft text-accent'
-                        }`}>
-                          {isIntOnly ? 'Interest' : isPrincInt ? 'P + I' : 'Principal'}
-                        </span>
+                    <tr key={rep.id} className="hover:bg-paper-sunken/60 transition-colors">
+                      <td className="px-6 py-3 font-mono text-ink-soft">{formatDate(rep.date)}</td>
+                      <td className="px-6 py-3">
+                        <StatusPill 
+                          status={isIntOnly ? 'info' : 'paid'} 
+                          label={isIntOnly ? 'Interest Only' : isPrincInt ? 'Principal + Interest' : 'Principal Only'}
+                          size="xs" 
+                        />
                       </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap font-mono text-xs text-ink capitalize">{rep.paymentMode || 'cash'}</td>
-                      <td className="px-6 py-3.5 whitespace-nowrap font-mono text-xs text-ink-faint">
+                      <td className="px-6 py-3 font-mono capitalize">{rep.paymentMode || 'Direct Cash'}</td>
+                      <td className="px-6 py-3 font-mono text-ink-faint">
                         {rep.transactionId ? (
-                          <span className="bg-paper-sunken px-2 py-0.5 rounded-full border border-border-default text-[10px]">{rep.transactionId}</span>
+                          <span className="bg-paper-sunken px-2 py-0.5 rounded border border-border-default text-[10px]">
+                            {rep.transactionId}
+                          </span>
                         ) : '—'}
                       </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap text-right font-mono text-sm font-bold text-positive">
-                        +₹{Number(rep.amount).toLocaleString("en-IN")}
-                        {(isPrincInt || (pAmt > 0 && iAmt > 0)) && (
-                          <span className="block text-[10px] font-normal text-ink-faint mt-0.5">
-                            P: ₹{pAmt.toLocaleString()} | I: ₹{iAmt.toLocaleString()}
-                          </span>
-                        )}
+                      <td className="px-6 py-3 text-right font-mono font-bold text-positive text-sm">
+                        +{formatCurrency(rep.amount)}
                       </td>
                     </tr>
                   );

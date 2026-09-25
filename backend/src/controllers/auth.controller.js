@@ -16,12 +16,21 @@ const validators = require("../validators/auth.validator");
 const isProduction = process.env.NODE_ENV === "production";
 
 // Cross-site cookie configuration for Vercel <-> Render production
-const getCookieOptions = () => ({
+const getAccessTokenCookieOptions = () => ({
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 15 * 60 * 1000, // 15 minutes
+});
+
+const getRefreshTokenCookieOptions = () => ({
   httpOnly: true,
   secure: isProduction,
   sameSite: isProduction ? "none" : "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 });
+
+const getCookieOptions = getRefreshTokenCookieOptions;
 
 const getClearCookieOptions = () => ({
   httpOnly: true,
@@ -72,8 +81,9 @@ async function register(req, res) {
 
   const { accessToken, refreshToken } = await createAuthTokens(user.id);
 
-  // Send refresh token as httpOnly cookie (and also return in body as fallback)
-  res.cookie("refreshToken", refreshToken, getCookieOptions());
+  // Send tokens as httpOnly secure cookies
+  res.cookie("accessToken", accessToken, getAccessTokenCookieOptions());
+  res.cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions());
 
   res.status(201).json({
     message: "Registration successful",
@@ -101,8 +111,9 @@ async function login(req, res) {
 
   const { accessToken, refreshToken } = await createAuthTokens(user.id);
 
-  // Send refresh token as httpOnly cookie
-  res.cookie("refreshToken", refreshToken, getCookieOptions());
+  // Send tokens as httpOnly secure cookies
+  res.cookie("accessToken", accessToken, getAccessTokenCookieOptions());
+  res.cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions());
 
   res.status(200).json({ 
     message: "Login successful",
@@ -134,10 +145,12 @@ async function refresh(req, res) {
   // Create new tokens
   const newTokens = await createAuthTokens(userId);
 
-  // Send new refresh token as httpOnly cookie
-  res.cookie("refreshToken", newTokens.refreshToken, getCookieOptions());
+  // Send new tokens as httpOnly secure cookies
+  res.cookie("accessToken", newTokens.accessToken, getAccessTokenCookieOptions());
+  res.cookie("refreshToken", newTokens.refreshToken, getRefreshTokenCookieOptions());
 
   res.status(200).json({ 
+    message: "Tokens refreshed successfully",
     accessToken: newTokens.accessToken,
     refreshToken: newTokens.refreshToken
   });
@@ -151,6 +164,7 @@ async function logout(req, res) {
     await redis.del(`refresh_token:${refreshToken}`);
   }
 
+  res.clearCookie("accessToken", getClearCookieOptions());
   res.clearCookie("refreshToken", getClearCookieOptions());
 
   res.status(200).json({ message: "Logged out successfully" });

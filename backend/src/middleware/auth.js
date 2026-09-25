@@ -8,18 +8,20 @@ const jwt = require("jsonwebtoken");
 const { AppError } = require("./errorHandler");
 
 /**
- * Middleware that verifies the access JWT from the Authorization header.
+ * Middleware that verifies the access JWT from HttpOnly cookie or Authorization header.
  * Attaches `req.userId` on success.
  * Returns 401 if token is missing, invalid, or expired.
  */
 function authenticate(req, res, next) {
-  const authHeader = req.headers.authorization;
+  let token = req.cookies?.accessToken;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw new AppError("Access token is required", 401, "AUTH_REQUIRED");
+  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+    token = req.headers.authorization.split(" ")[1];
   }
 
-  const token = authHeader.split(" ")[1];
+  if (!token) {
+    throw new AppError("Access token is required", 401, "AUTH_REQUIRED");
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
