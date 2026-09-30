@@ -13,10 +13,16 @@ const { AppError } = require("./errorHandler");
  * Returns 401 if token is missing, invalid, or expired.
  */
 function authenticate(req, res, next) {
-  let token = req.cookies?.accessToken;
+  let token = null;
 
-  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+  // 1. Check Authorization header first (immune to cross-site third-party cookie blocking)
+  if (req.headers.authorization?.startsWith("Bearer ")) {
     token = req.headers.authorization.split(" ")[1];
+  }
+
+  // 2. Fall back to HttpOnly cookie (for same-origin or environments supporting cookies)
+  if (!token) {
+    token = req.cookies?.accessToken;
   }
 
   if (!token) {

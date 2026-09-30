@@ -35,7 +35,13 @@ export function AuthProvider({ children }) {
       return data;
     },
     onSuccess: (data) => {
-      if (data.user) {
+      if (data?.accessToken) {
+        sessionStorage.setItem('finpilot_access_token', data.accessToken);
+      }
+      if (data?.refreshToken) {
+        sessionStorage.setItem('finpilot_refresh_token', data.refreshToken);
+      }
+      if (data?.user) {
         queryClient.setQueryData(['me'], data.user);
       }
       queryClient.invalidateQueries({ queryKey: ['me'] });
@@ -48,7 +54,13 @@ export function AuthProvider({ children }) {
       return data;
     },
     onSuccess: (data) => {
-      if (data.user) {
+      if (data?.accessToken) {
+        sessionStorage.setItem('finpilot_access_token', data.accessToken);
+      }
+      if (data?.refreshToken) {
+        sessionStorage.setItem('finpilot_refresh_token', data.refreshToken);
+      }
+      if (data?.user) {
         queryClient.setQueryData(['me'], data.user);
       }
       queryClient.invalidateQueries({ queryKey: ['me'] });
@@ -57,10 +69,13 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await apiClient.post('/api/auth/logout');
+      const refreshToken = sessionStorage.getItem('finpilot_refresh_token');
+      await apiClient.post('/api/auth/logout', { refreshToken });
     } catch {
       // Ignore network errors on logout
     } finally {
+      sessionStorage.removeItem('finpilot_access_token');
+      sessionStorage.removeItem('finpilot_refresh_token');
       queryClient.setQueryData(['me'], null);
       queryClient.clear();
       localStorage.removeItem('finpilot_token');
@@ -72,7 +87,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
-    token: null, // Tokens are safely handled via HttpOnly cookies
+    token: sessionStorage.getItem('finpilot_access_token') || null,
     isUserLoading,
     isAuthenticated: !!user,
     login: loginMutation.mutateAsync,

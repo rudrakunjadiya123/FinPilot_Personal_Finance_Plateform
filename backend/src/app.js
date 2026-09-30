@@ -12,6 +12,9 @@ const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
+// Trust reverse proxies (Render, Cloudflare, Heroku) for HTTPS detection
+app.set("trust proxy", 1);
+
 // ── Security & Parsing ────────────────────────────────────
 app.use(helmet());
 const allowedOrigins = [
@@ -42,6 +45,8 @@ app.use(
       return callback(null, true);
     },
     credentials: true, // Required for httpOnly cookies
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   })
 );
 app.use(cookieParser());
