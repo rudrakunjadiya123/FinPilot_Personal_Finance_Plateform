@@ -77,34 +77,76 @@ function generateAmortizationSchedule(
  * @param {number} emiAmount - The existing EMI amount
  * @param {number} annualInterestRate - Annual interest rate in percentage
  * @param {Array} originalRemainingSchedule - The previously computed schedule going forward
- * @returns {Object} Simulation results including interest saved and new tenure
+ * @param {string} [strategy='tenure'] - Optimization strategy ('tenure' to reduce tenure, 'emi' to lower monthly EMI)
+ * @returns {Object} Simulation results including interest saved, new tenure, and new EMI
  */
 function simulatePrepayment(
   prepaymentAmount,
   currentBalance,
   emiAmount,
   annualInterestRate,
-  originalRemainingSchedule
+  originalRemainingSchedule,
+  strategy = 'tenure'
 ) {
   const newBalance = currentBalance - prepaymentAmount;
+  const originalRemainingTenure = originalRemainingSchedule.length;
+
+  const originalTotalInterest = originalRemainingSchedule.reduce(
+    (sum, row) => sum + row.interestComponent,
+    0
+  );
 
   if (newBalance <= 0) {
     // Fully paid off
-    const originalTotalInterest = originalRemainingSchedule.reduce(
-      (sum, row) => sum + row.interestComponent,
-      0
-    );
     return {
       interestSaved: parseFloat(originalTotalInterest.toFixed(2)),
-      originalTenureRemaining: originalRemainingSchedule.length,
+      originalTenureRemaining: originalRemainingTenure,
       newTenureRemaining: 0,
-      monthsReduced: originalRemainingSchedule.length,
+      monthsReduced: originalRemainingTenure,
+      newEmi: 0,
+      emiReduction: parseFloat(emiAmount.toFixed(2)),
+      strategy,
     };
   }
 
-  // Calculate new schedule from the new balance, assuming same EMI
-  // We use a high max tenure to see how long it takes to hit 0 safely
   const r = annualInterestRate / 12 / 100;
+
+  if (strategy === 'emi') {
+    // Strategy: Lower Monthly EMI (keep remaining tenure same)
+    const newEmi = calculateEMI(newBalance, annualInterestRate, originalRemainingTenure);
+    let simulatedBalance = newBalance;
+    let newTotalInterest = 0;
+
+    for (let i = 1; i <= originalRemainingTenure; i++) {
+      let interestThisMonth = simulatedBalance * r;
+      let principalThisMonth = newEmi - interestThisMonth;
+
+      if (i === originalRemainingTenure || simulatedBalance - principalThisMonth <= 0) {
+        principalThisMonth = simulatedBalance;
+        simulatedBalance = 0;
+      } else {
+        simulatedBalance -= principalThisMonth;
+      }
+
+      newTotalInterest += interestThisMonth;
+      if (simulatedBalance <= 0) break;
+    }
+
+    const interestSaved = Math.max(0, originalTotalInterest - newTotalInterest);
+    const emiReduction = Math.max(0, emiAmount - newEmi);
+
+    return {
+      interestSaved: parseFloat(interestSaved.toFixed(2)),
+      originalTenureRemaining: originalRemainingTenure,
+      newTenureRemaining: originalRemainingTenure,
+      monthsReduced: 0,
+      newEmi: parseFloat(newEmi.toFixed(2)),
+      emiReduction: parseFloat(emiReduction.toFixed(2)),
+      strategy: 'emi',
+    };
+  }
+
+  // Strategy: Reduce Tenure (keep EMI same, payoff early)
   let simulatedBalance = newBalance;
   let newTenureRemaining = 0;
   let newTotalInterest = 0;
@@ -128,20 +170,17 @@ function simulatePrepayment(
     newTotalInterest += interestThisMonth;
   }
 
-  const originalTotalInterest = originalRemainingSchedule.reduce(
-    (sum, row) => sum + row.interestComponent,
-    0
-  );
-
-  const interestSaved = originalTotalInterest - newTotalInterest;
-  const originalTenureRemaining = originalRemainingSchedule.length;
-  const monthsReduced = originalTenureRemaining - newTenureRemaining;
+  const interestSaved = Math.max(0, originalTotalInterest - newTotalInterest);
+  const monthsReduced = Math.max(0, originalRemainingTenure - newTenureRemaining);
 
   return {
-    interestSaved: parseFloat(Math.max(0, interestSaved).toFixed(2)),
-    originalTenureRemaining,
+    interestSaved: parseFloat(interestSaved.toFixed(2)),
+    originalTenureRemaining: originalRemainingTenure,
     newTenureRemaining,
-    monthsReduced: Math.max(0, monthsReduced),
+    monthsReduced,
+    newEmi: parseFloat(emiAmount.toFixed(2)),
+    emiReduction: 0,
+    strategy: 'tenure',
   };
 }
 

@@ -81,6 +81,20 @@ export default function LendBorrowDetailPage() {
 
   const progressPercent = amount > 0 ? Math.min(100, Math.round((totalPrincipalRepaid / amount) * 100)) : 0;
 
+  let displayInterestRate = Number(record.interestRate || 0);
+  let displayInterestType = record.interestType || 'none';
+
+  if (Array.isArray(record.interestRateHistory) && record.interestRateHistory.length > 0) {
+    const sorted = [...record.interestRateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const latest = sorted[sorted.length - 1];
+    if (latest && latest.rate !== undefined && latest.rate !== null) {
+      displayInterestRate = Number(latest.rate);
+    }
+    if (latest && latest.interestType) {
+      displayInterestType = latest.interestType;
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-full space-y-6 pb-20 font-body">
       
@@ -168,7 +182,7 @@ export default function LendBorrowDetailPage() {
           <div className="bg-paper-sunken p-4 rounded-xl border border-border-default">
             <span className="text-[10px] font-semibold text-ink-faint uppercase block">Interest Rate</span>
             <div className="text-2xl font-mono font-bold text-ink mt-1">
-              {Number(record.interestRate || 0)}% <span className="text-xs font-normal text-ink-faint">({record.interestType || 'none'})</span>
+              {displayInterestRate}% <span className="text-xs font-normal text-ink-faint">({displayInterestType})</span>
             </div>
             <span className="text-[10px] text-ink-soft mt-0.5 block">Accrued: {formatCurrency(record.interestAccrued || 0)}</span>
           </div>

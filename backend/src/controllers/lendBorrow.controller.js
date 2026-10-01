@@ -54,10 +54,10 @@ function deriveStatus(totalRepaid, totalAmount) {
  * Mathematically derives variable JSON interest traces piecewise bridging compound boundaries
  */
 function computeAdvancedInterest(record, amount) {
-  if (!record.interestRate || Number(record.interestRate) === 0) return 0;
-  
   const history = Array.isArray(record.interestRateHistory) && record.interestRateHistory.length > 0 
       ? [...record.interestRateHistory] : [];
+
+  if ((!record.interestRate || Number(record.interestRate) === 0) && history.length === 0) return 0;
   
   history.sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -68,7 +68,7 @@ function computeAdvancedInterest(record, amount) {
 
   const intervals = [];
   let currentStart = baseStartDate;
-  let currentRate = Number(record.interestRate);
+  let currentRate = Number(record.interestRate || 0);
   let currentType = record.interestType || 'simple';
   let currentFreq = record.compoundingFrequency;
 
@@ -131,6 +131,31 @@ function computeAdvancedInterest(record, amount) {
 }
 
 /**
+ * Derives current effective interest rate & settings based on history overrides
+ */
+function getEffectiveInterestConfig(record) {
+  let effectiveRate = record.interestRate !== null && record.interestRate !== undefined ? Number(record.interestRate) : 0;
+  let effectiveType = record.interestType || 'simple';
+  let effectiveFreq = record.compoundingFrequency;
+
+  if (Array.isArray(record.interestRateHistory) && record.interestRateHistory.length > 0) {
+    const sortedHistory = [...record.interestRateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const latestChange = sortedHistory[sortedHistory.length - 1];
+    if (latestChange && latestChange.rate !== undefined && latestChange.rate !== null) {
+      effectiveRate = Number(latestChange.rate);
+      if (latestChange.interestType) effectiveType = latestChange.interestType;
+      if (latestChange.compoundingFrequency !== undefined) effectiveFreq = latestChange.compoundingFrequency;
+    }
+  }
+
+  return {
+    interestRate: effectiveRate,
+    interestType: effectiveType,
+    compoundingFrequency: effectiveFreq,
+  };
+}
+
+/**
  * Enrich a record with computed fields: isOverdue, interestAccrued, totalRepaid, remainingBalance
  */
 function enrichRecord(record, totalRepaid) {
@@ -144,9 +169,14 @@ function enrichRecord(record, totalRepaid) {
 
   // Comprehensive Advanced Engine
   let interestAccrued = computeAdvancedInterest(record, amount);
+  const effectiveConfig = getEffectiveInterestConfig(record);
 
   return {
     ...record,
+    initialInterestRate: record.interestRate,
+    interestRate: effectiveConfig.interestRate,
+    interestType: effectiveConfig.interestType,
+    compoundingFrequency: effectiveConfig.compoundingFrequency,
     isOverdue,
     interestAccrued,
     totalRepaid: parseFloat(totalRepaid.toFixed(2)),
@@ -559,8 +589,11 @@ async function verifyPendingLendBorrowRecords(userId) {
 
 // ── 8. Manual Reminder Emails ─────────────────────────────
 async function sendReminders(req, res) {
-  const { personEmail } = req.body;
-  if (!personEmail) throw new AppError("personEmail is required", 400);
+  const { personEmail, personEmails } = req.body;
+  const target = personEmails || personEmail;
+  if (!target || (Array.isArray(target) && target.length === 0)) {
+    throw new AppError("personEmail is required", 400);
+  }
 
   // Get active user
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
@@ -572,8 +605,12 @@ async function sendReminders(req, res) {
     status: { not: LEND_BORROW_STATUS[2] } // not 'repaid'
   };
 
-  if (personEmail !== "ALL") {
-    whereClause.personEmail = personEmail;
+  if (target !== "ALL") {
+    if (Array.isArray(target)) {
+      whereClause.personEmail = { in: target };
+    } else {
+      whereClause.personEmail = target;
+    }
   }
 
   const records = await prisma.lendBorrowRecord.findMany({
@@ -658,7 +695,10 @@ async function changeInterestRate(req, res) {
     throw new AppError("newRate and startDate are required", 400);
   }
 
-  const record = await prisma.lendBorrowRecord.findUnique({ where: { id } });
+  const record = await prisma.lendBorrowRecord.findUnique({ 
+    where: { id },
+    include: { repayments: { orderBy: { date: "desc" } } }
+  });
   if (!record || record.userId !== req.userId) {
     throw new AppError("Record not found", 404, "NOT_FOUND");
   }
@@ -680,11 +720,13 @@ async function changeInterestRate(req, res) {
     where: { id },
     data: { 
       interestRateHistory: history
-    }
+    },
+    include: { repayments: { orderBy: { date: "desc" } } }
   });
 
   await invalidateDashboardCaches(req.userId);
-  res.status(200).json(updated);
+  const totalRepaid = calculatePrincipalRepaid(updated.repayments || []);
+  res.status(200).json(enrichRecord(updated, totalRepaid));
 }
 
 // ── DELETE Lend/Borrow Record ──────────────────────────────

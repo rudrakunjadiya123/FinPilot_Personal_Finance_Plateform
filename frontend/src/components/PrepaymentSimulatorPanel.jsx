@@ -12,15 +12,27 @@ export default function PrepaymentSimulatorPanel({ loanId, currentOutstanding })
   // Presets for quick selection
   const presets = [25000, 50000, 100000, 200000].filter(p => p <= currentOutstanding);
 
-  const handleSimulate = async () => {
-    const amount = Number(amountStr);
+  const runSimulation = async (amount, strategy = prepayStrategy) => {
     if (!amount || amount <= 0 || amount > currentOutstanding) return;
 
     try {
-      const result = await simulatePrepayment(amount);
+      const result = await simulatePrepayment({ prepaymentAmount: amount, strategy });
       setSimulationResult(result);
     } catch (err) {
       console.error('Simulation error:', err);
+    }
+  };
+
+  const handleSimulate = () => {
+    const amount = Number(amountStr);
+    runSimulation(amount, prepayStrategy);
+  };
+
+  const handleStrategyChange = (newStrategy) => {
+    setPrepayStrategy(newStrategy);
+    const amount = Number(amountStr);
+    if (simulationResult && amount > 0 && amount <= currentOutstanding) {
+      runSimulation(amount, newStrategy);
     }
   };
 
@@ -28,7 +40,7 @@ export default function PrepaymentSimulatorPanel({ loanId, currentOutstanding })
     const amount = Number(amountStr);
     if (!amount || !simulationResult) return;
     try {
-      await commitPrepayment(amount);
+      await commitPrepayment({ prepaymentAmount: amount, strategy: prepayStrategy });
       setAmountStr('');
       setSimulationResult(null);
     } catch (err) {
@@ -97,7 +109,7 @@ export default function PrepaymentSimulatorPanel({ loanId, currentOutstanding })
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setPrepayStrategy('tenure')}
+                onClick={() => handleStrategyChange('tenure')}
                 className={`p-3 rounded-xl border text-left text-xs transition-all ${
                   prepayStrategy === 'tenure' 
                     ? 'border-accent bg-accent-soft/40 text-accent font-semibold shadow-sm' 
@@ -115,7 +127,7 @@ export default function PrepaymentSimulatorPanel({ loanId, currentOutstanding })
 
               <button
                 type="button"
-                onClick={() => setPrepayStrategy('emi')}
+                onClick={() => handleStrategyChange('emi')}
                 className={`p-3 rounded-xl border text-left text-xs transition-all ${
                   prepayStrategy === 'emi' 
                     ? 'border-accent bg-accent-soft/40 text-accent font-semibold shadow-sm' 
@@ -173,17 +185,35 @@ export default function PrepaymentSimulatorPanel({ loanId, currentOutstanding })
                 </div>
 
                 <div className="bg-paper-raised p-3.5 rounded-xl border border-border-default">
-                  <span className="text-[10px] font-semibold text-ink-faint uppercase block">Tenure Reduction</span>
-                  <div className="text-xl font-mono font-bold text-accent mt-1">
-                    {simulationResult.monthsReduced || simulationResult.monthsSaved || 0} Months
-                  </div>
-                  <span className="text-[10px] text-ink-soft mt-0.5 block">Debt-free earlier</span>
+                  {prepayStrategy === 'emi' ? (
+                    <>
+                      <span className="text-[10px] font-semibold text-ink-faint uppercase block">New Monthly EMI</span>
+                      <div className="text-xl font-mono font-bold text-accent mt-1">
+                        {formatCurrency(simulationResult.newEmi || 0)}
+                      </div>
+                      <span className="text-[10px] text-ink-soft mt-0.5 block">
+                        Reduced by {formatCurrency(simulationResult.emiReduction || 0)}/mo
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[10px] font-semibold text-ink-faint uppercase block">Tenure Reduction</span>
+                      <div className="text-xl font-mono font-bold text-accent mt-1">
+                        {simulationResult.monthsReduced || simulationResult.monthsSaved || 0} Months
+                      </div>
+                      <span className="text-[10px] text-ink-soft mt-0.5 block">Debt-free earlier</span>
+                    </>
+                  )}
                 </div>
               </div>
 
               <div className="p-2.5 rounded-lg bg-positive-soft/50 border border-positive/20 text-[11px] text-positive-dark flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-positive shrink-0" />
-                <span>Prepaying {formatCurrency(amountStr)} saves {formatCurrency(simulationResult.interestSaved || 0)} in cumulative interest!</span>
+                <span>
+                  {prepayStrategy === 'emi'
+                    ? `Prepaying ${formatCurrency(amountStr)} lowers your monthly EMI to ${formatCurrency(simulationResult.newEmi || 0)} (saving ${formatCurrency(simulationResult.emiReduction || 0)}/mo) and saves ${formatCurrency(simulationResult.interestSaved || 0)} in cumulative interest!`
+                    : `Prepaying ${formatCurrency(amountStr)} saves ${formatCurrency(simulationResult.interestSaved || 0)} in cumulative interest and closes debt ${simulationResult.monthsReduced || simulationResult.monthsSaved || 0} months earlier!`}
+                </span>
               </div>
 
               <button

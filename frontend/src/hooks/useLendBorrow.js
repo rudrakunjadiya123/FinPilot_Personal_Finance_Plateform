@@ -18,8 +18,8 @@ export function useLendBorrow() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['lendBorrow']);
-      queryClient.invalidateQueries(['upcomingDues']);
+      queryClient.invalidateQueries({ queryKey: ['lendBorrow'] });
+      queryClient.invalidateQueries({ queryKey: ['upcomingDues'] });
     }
   });
 
@@ -31,10 +31,10 @@ export function useLendBorrow() {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries(['lendBorrow']);
-      queryClient.invalidateQueries(['upcomingDues']);
-      queryClient.invalidateQueries(['cashFlow']);
-      if (variables?.id) queryClient.invalidateQueries(['lendBorrow', variables.id]);
+      queryClient.invalidateQueries({ queryKey: ['lendBorrow'] });
+      queryClient.invalidateQueries({ queryKey: ['upcomingDues'] });
+      queryClient.invalidateQueries({ queryKey: ['cashFlow'] });
+      if (variables?.id) queryClient.invalidateQueries({ queryKey: ['lendBorrow', variables.id] });
     }
   });
 
@@ -58,10 +58,15 @@ export function useLendBorrow() {
       });
       return data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries(['lendBorrow']);
-      queryClient.invalidateQueries(['upcomingDues']);
-      if (variables?.id) queryClient.invalidateQueries(['lendBorrow', variables.id]);
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['lendBorrow'] });
+      queryClient.invalidateQueries({ queryKey: ['upcomingDues'] });
+      if (variables?.id) {
+        queryClient.invalidateQueries({ queryKey: ['lendBorrow', variables.id] });
+        if (data) {
+          queryClient.setQueryData(['lendBorrow', variables.id], data);
+        }
+      }
     }
   });
 

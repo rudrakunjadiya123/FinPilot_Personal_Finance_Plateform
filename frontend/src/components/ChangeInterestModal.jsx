@@ -10,6 +10,23 @@ export default function ChangeInterestModal({ isOpen, onClose, record }) {
   const [interestType, setInterestType] = useState(record?.interestType || 'simple');
   const [compoundingFrequency, setCompoundingFrequency] = useState(record?.compoundingFrequency || 1);
 
+  React.useEffect(() => {
+    if (isOpen && record) {
+      let currentType = record.interestType || 'simple';
+      let currentFreq = record.compoundingFrequency || 1;
+      if (Array.isArray(record.interestRateHistory) && record.interestRateHistory.length > 0) {
+        const sorted = [...record.interestRateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const latest = sorted[sorted.length - 1];
+        if (latest?.interestType) currentType = latest.interestType;
+        if (latest?.compoundingFrequency) currentFreq = latest.compoundingFrequency;
+      }
+      setInterestType(currentType);
+      setCompoundingFrequency(currentFreq);
+      setStartDate(new Date().toISOString().split('T')[0]);
+      setNewRate('');
+    }
+  }, [isOpen, record]);
+
   if (!record) return null;
 
   const handleSubmit = async (e) => {

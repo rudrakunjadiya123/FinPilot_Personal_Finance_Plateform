@@ -47,6 +47,7 @@ const simulatePrepaymentSchema = z.object({
     .number()
     .positive("Prepayment amount must be greater than 0")
     .max(MAX_MONETARY_VALUE, `Cannot exceed ${MAX_MONETARY_VALUE}`),
+  strategy: z.enum(["tenure", "emi"]).optional().default("tenure"),
 });
 
 const confirmPrepaymentSchema = z.object({
@@ -54,6 +55,7 @@ const confirmPrepaymentSchema = z.object({
     .number()
     .positive("Prepayment amount must be greater than 0")
     .max(MAX_MONETARY_VALUE, `Cannot exceed ${MAX_MONETARY_VALUE}`),
+  strategy: z.enum(["tenure", "emi"]).optional().default("tenure"),
 });
 
 module.exports = {

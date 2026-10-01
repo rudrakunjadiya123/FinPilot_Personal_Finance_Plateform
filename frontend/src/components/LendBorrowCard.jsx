@@ -40,6 +40,17 @@ export default function LendBorrowCard({ record }) {
   else if (isOverdue) computedStatus = 'overdue';
   else if (repaidSoFar > 0) computedStatus = 'partial';
 
+  const displayInterestRate = React.useMemo(() => {
+    if (Array.isArray(record.interestRateHistory) && record.interestRateHistory.length > 0) {
+      const sorted = [...record.interestRateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const latest = sorted[sorted.length - 1];
+      if (latest && latest.rate !== undefined && latest.rate !== null) {
+        return Number(latest.rate);
+      }
+    }
+    return Number(record.interestRate || 0);
+  }, [record.interestRate, record.interestRateHistory]);
+
   return (
     <div 
       onClick={() => navigate(`/app/lend-borrow/${record.id}`)}
@@ -135,10 +146,10 @@ export default function LendBorrowCard({ record }) {
           </span>
         )}
 
-        {Number(record.interestRate) > 0 && !isOverdue && (
+        {displayInterestRate > 0 && !isOverdue && (
           <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-ink-soft bg-paper-sunken px-2 py-0.5 rounded-md border border-border-default">
             <Percent className="w-2.5 h-2.5" />
-            {record.interestRate}%
+            {displayInterestRate}%
           </span>
         )}
       </div>

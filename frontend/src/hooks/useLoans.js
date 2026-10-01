@@ -52,22 +52,28 @@ export function useLoanDetails(loanId) {
 
   // POST Simulate Prepayment
   const simulateMutation = useMutation({
-    mutationFn: async (amount) => {
-      const { data } = await apiClient.post(`/api/loans/${loanId}/simulate-prepayment`, { prepaymentAmount: amount });
+    mutationFn: async (payload) => {
+      const body = typeof payload === 'object' && payload !== null
+        ? payload
+        : { prepaymentAmount: payload };
+      const { data } = await apiClient.post(`/api/loans/${loanId}/simulate-prepayment`, body);
       return data;
     }
   });
 
   // POST Commit Prepayment
   const commitMutation = useMutation({
-    mutationFn: async (amount) => {
+    mutationFn: async (payload) => {
       // Re-running simulator route, but ideally checking out via real prepayment if route existed. 
       // Based on Master Spec, the simulate branch can be persisted optionally, but module 2 defined generic EMI payment structure.
       // Wait, Module 2 spec actually has POST /api/loans/:id/prepayments ? No, it has `POST /api/loans/:id/prepayment/simulate` 
       // And standard EMIs hit `PUT /api/loans/:id/emis/:emiId`. 
       // For now, let's just make the simulator mutation simulate, and mapping a confirm via updating emisechedule or a bulk prepay endpoint if existed.
       // Actually backend implementation has `POST /api/loans/:id/confirm-prepayment`.
-      const { data } = await apiClient.post(`/api/loans/${loanId}/confirm-prepayment`, { prepaymentAmount: amount });
+      const body = typeof payload === 'object' && payload !== null
+        ? payload
+        : { prepaymentAmount: payload };
+      const { data } = await apiClient.post(`/api/loans/${loanId}/confirm-prepayment`, body);
       return data;
     },
     onSuccess: () => {

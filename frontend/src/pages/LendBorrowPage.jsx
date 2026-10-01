@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLendBorrow } from '../hooks/useLendBorrow';
 import LendBorrowCard from '../components/LendBorrowCard';
@@ -7,16 +7,16 @@ import { formatCurrency } from '../utils/formatters';
 import { 
   Plus, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, 
   AlertTriangle, Search, 
-  Send, X, CheckCircle2, Users 
+  Send, X, CheckCircle2, Users, ChevronDown 
 } from 'lucide-react';
 
 export default function LendBorrowPage() {
   const { records, isLoading, sendReminder, isSendingReminder } = useLendBorrow();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-  const [reminderTarget, setReminderTarget] = useState('ALL');
-  const [reminderSubject, setReminderSubject] = useState('Payment Reminder from FinPilot');
-  const [reminderNote, setReminderNote] = useState('Hi, this is a friendly reminder regarding our pending balance on FinPilot.');
+  const [selectedEmails, setSelectedEmails] = useState([]);
+  const [isDebtorDropdownOpen, setIsDebtorDropdownOpen] = useState(false);
+  const debtorDropdownRef = useRef(null);
   const [reminderSuccess, setReminderSuccess] = useState('');
 
   const [activeTab, setActiveTab] = useState('lent'); // 'lent' | 'borrowed'
@@ -28,9 +28,9 @@ export default function LendBorrowPage() {
     setPortalTarget(document.getElementById('topbar-actions'));
   }, []);
 
-  const allRecords = records || [];
-  const lentRecords = allRecords.filter(r => r.type === 'lent');
-  const borrowedRecords = allRecords.filter(r => r.type === 'borrowed');
+  const allRecords = useMemo(() => records || [], [records]);
+  const lentRecords = useMemo(() => allRecords.filter(r => r.type === 'lent'), [allRecords]);
+  const borrowedRecords = useMemo(() => allRecords.filter(r => r.type === 'borrowed'), [allRecords]);
 
   // Summary Metrics (Section 9.2)
   const summary = useMemo(() => {
@@ -68,21 +68,70 @@ export default function LendBorrowPage() {
     };
   }, [allRecords]);
 
-  // Debtors for reminder modal
+  // Debtors for reminder modal (deduplicated & aggregated by personEmail)
   const pendingDebtors = useMemo(() => {
-    return lentRecords
-      .filter(r => {
-        const remaining = r.remainingBalance !== undefined 
-          ? Number(r.remainingBalance) 
-          : (Number(r.amount) - Number(r.totalRepaid || 0));
-        return remaining > 0 && r.personEmail;
-      })
-      .map(r => ({
-        email: r.personEmail,
-        name: r.personName,
-        remaining: r.remainingBalance !== undefined ? Number(r.remainingBalance) : (Number(r.amount) - Number(r.totalRepaid || 0))
-      }));
+    const map = new Map();
+    lentRecords.forEach(r => {
+      const remaining = r.remainingBalance !== undefined 
+        ? Number(r.remainingBalance) 
+        : (Number(r.amount) - Number(r.totalRepaid || 0));
+      if (remaining > 0 && r.personEmail) {
+        if (!map.has(r.personEmail)) {
+          map.set(r.personEmail, {
+            email: r.personEmail,
+            name: r.personName,
+            remaining: remaining
+          });
+        } else {
+          const existing = map.get(r.personEmail);
+          existing.remaining += remaining;
+        }
+      }
+    });
+    return Array.from(map.values());
   }, [lentRecords]);
+
+  // When reminder modal opens, select all pending debtors by default
+  useEffect(() => {
+    if (isReminderModalOpen) {
+      setSelectedEmails(pendingDebtors.map(d => d.email));
+      setIsDebtorDropdownOpen(false);
+      setReminderSuccess('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReminderModalOpen]);
+
+  // Close debtor dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (debtorDropdownRef.current && !debtorDropdownRef.current.contains(e.target)) {
+        setIsDebtorDropdownOpen(false);
+      }
+    };
+    if (isDebtorDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDebtorDropdownOpen]);
+
+  const isAllDebtorsSelected = pendingDebtors.length > 0 && selectedEmails.length === pendingDebtors.length;
+  const isDebtorIndeterminate = selectedEmails.length > 0 && selectedEmails.length < pendingDebtors.length;
+
+  const handleToggleAllDebtors = () => {
+    if (isAllDebtorsSelected) {
+      setSelectedEmails([]);
+    } else {
+      setSelectedEmails(pendingDebtors.map(d => d.email));
+    }
+  };
+
+  const handleToggleDebtor = (email) => {
+    setSelectedEmails(prev => 
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
+  };
 
   // Filtered records
   const currentTabRecords = activeTab === 'lent' ? lentRecords : borrowedRecords;
@@ -112,12 +161,12 @@ export default function LendBorrowPage() {
   }, [currentTabRecords, searchQuery, statusFilter]);
 
   const handleSendReminder = async () => {
+    if (selectedEmails.length === 0) return;
     try {
       setReminderSuccess('');
+      const target = isAllDebtorsSelected ? 'ALL' : (selectedEmails.length === 1 ? selectedEmails[0] : selectedEmails);
       const res = await sendReminder({ 
-        personEmail: reminderTarget,
-        customSubject: reminderSubject,
-        customNote: reminderNote
+        personEmail: target
       });
       setReminderSuccess(res?.message || 'Reminder notification sent successfully!');
       setTimeout(() => {
@@ -328,7 +377,7 @@ export default function LendBorrowPage() {
       {isReminderModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsReminderModalOpen(false)} />
-          <div className="relative bg-paper-raised border border-border-default rounded-2xl shadow-elevated max-w-md w-full overflow-hidden p-6 space-y-4 animate-scale-in">
+          <div className="relative bg-paper-raised border border-border-default rounded-2xl shadow-elevated max-w-md w-full overflow-visible p-6 space-y-4 animate-scale-in">
             <div className="flex items-center justify-between pb-3 border-b border-border-default">
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-accent" />
@@ -345,41 +394,89 @@ export default function LendBorrowPage() {
                 <p className="text-xs font-semibold text-ink">{reminderSuccess}</p>
               </div>
             ) : (
-              <div className="space-y-3.5">
-                <div>
+              <div className="space-y-4">
+                <div className="relative" ref={debtorDropdownRef}>
                   <label className="block text-xs font-medium text-ink-soft mb-1">Select Debtor</label>
-                  <select 
-                    value={reminderTarget} 
-                    onChange={e => setReminderTarget(e.target.value)}
-                    className="w-full bg-paper-sunken border border-border-default rounded-xl px-3 py-2 text-xs text-ink outline-none focus:border-accent"
+                  
+                  {/* Dropdown Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setIsDebtorDropdownOpen(prev => !prev)}
+                    className="w-full bg-paper-sunken border border-border-default hover:border-border-strong rounded-xl px-3 py-2.5 text-xs text-ink flex items-center justify-between outline-none focus:border-accent transition-colors cursor-pointer"
                   >
-                    <option value="ALL">All Active Debtors ({pendingDebtors.length})</option>
-                    {pendingDebtors.map(d => (
-                      <option key={d.email} value={d.email}>
-                        {d.name} ({d.email}) — {formatCurrency(d.remaining)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <span className="truncate pr-2 font-medium text-left">
+                      {selectedEmails.length === 0 ? (
+                        <span className="text-ink-faint">Select debtor(s)...</span>
+                      ) : isAllDebtorsSelected ? (
+                        `All Active Debtors (${pendingDebtors.length})`
+                      ) : selectedEmails.length === 1 ? (
+                        (() => {
+                          const d = pendingDebtors.find(p => p.email === selectedEmails[0]);
+                          return d ? `${d.name} (${d.email}) — ${formatCurrency(d.remaining)}` : selectedEmails[0];
+                        })()
+                      ) : (
+                        `${selectedEmails.length} of ${pendingDebtors.length} Debtors Selected`
+                      )}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-ink-soft transition-transform duration-200 shrink-0 ${isDebtorDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
 
-                <div>
-                  <label className="block text-xs font-medium text-ink-soft mb-1">Subject</label>
-                  <input
-                    type="text"
-                    value={reminderSubject}
-                    onChange={e => setReminderSubject(e.target.value)}
-                    className="w-full bg-paper-sunken border border-border-default rounded-xl px-3 py-2 text-xs text-ink outline-none focus:border-accent"
-                  />
-                </div>
+                  {/* Dropdown Menu with Checkboxes */}
+                  {isDebtorDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-paper-raised border border-border-default rounded-xl shadow-elevated z-[60] max-h-56 overflow-y-auto p-1.5 space-y-0.5 custom-scrollbar">
+                      {/* Option 1: Select All / All Active Debtors */}
+                      <div 
+                        onClick={handleToggleAllDebtors}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-paper-sunken cursor-pointer transition-colors border-b border-border-default/60 mb-1"
+                      >
+                        <input 
+                          type="checkbox"
+                          checked={isAllDebtorsSelected}
+                          ref={el => { if (el) el.indeterminate = isDebtorIndeterminate; }}
+                          onChange={handleToggleAllDebtors}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded border-border-default accent-accent cursor-pointer shrink-0"
+                        />
+                        <span className="text-xs font-semibold text-ink truncate select-none">
+                          All Active Debtors ({pendingDebtors.length})
+                        </span>
+                      </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-ink-soft mb-1">Custom Message</label>
-                  <textarea
-                    rows={3}
-                    value={reminderNote}
-                    onChange={e => setReminderNote(e.target.value)}
-                    className="w-full bg-paper-sunken border border-border-default rounded-xl p-3 text-xs text-ink outline-none focus:border-accent resize-none"
-                  />
+                      {/* Debtor Options with Checkbox on Left */}
+                      {pendingDebtors.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-ink-faint text-center">
+                          No active debtors found.
+                        </div>
+                      ) : (
+                        pendingDebtors.map(d => {
+                          const isChecked = selectedEmails.includes(d.email);
+                          return (
+                            <div 
+                              key={d.email}
+                              onClick={() => handleToggleDebtor(d.email)}
+                              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-paper-sunken cursor-pointer transition-colors ${isChecked ? 'bg-accent/5' : ''}`}
+                            >
+                              <input 
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleDebtor(d.email)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-4 h-4 rounded border-border-default accent-accent cursor-pointer shrink-0"
+                              />
+                              <div className="flex items-center justify-between gap-2 min-w-0 flex-1 text-xs select-none">
+                                <span className="text-ink truncate font-medium">
+                                  {d.name} <span className="text-ink-faint font-normal">({d.email})</span>
+                                </span>
+                                <span className="font-mono font-bold text-amber-500 shrink-0">
+                                  {formatCurrency(d.remaining)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
@@ -391,7 +488,7 @@ export default function LendBorrowPage() {
                   </button>
                   <button 
                     onClick={handleSendReminder}
-                    disabled={isSendingReminder || pendingDebtors.length === 0}
+                    disabled={isSendingReminder || selectedEmails.length === 0}
                     className="px-4 py-2 text-xs font-semibold bg-accent hover:bg-accent-hover text-white rounded-xl shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
                   >
                     {isSendingReminder ? 'Sending...' : <><Send className="w-3.5 h-3.5" /> Dispatch Reminder</>}

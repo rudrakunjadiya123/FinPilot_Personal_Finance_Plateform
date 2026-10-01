@@ -249,7 +249,7 @@ async function markEmiPaid(req, res) {
 // ── SIMULATE Prepayment ───────────────────────────────────
 async function simulateLoanPrepayment(req, res) {
   const { id } = req.params;
-  const { prepaymentAmount } = validators.simulatePrepaymentSchema.parse(req.body);
+  const { prepaymentAmount, strategy } = validators.simulatePrepaymentSchema.parse(req.body);
 
   const loan = await prisma.loan.findUnique({
     where: { id, userId: req.userId },
@@ -294,7 +294,8 @@ async function simulateLoanPrepayment(req, res) {
     simulationParams.currentBalance,
     simulationParams.emiAmount,
     simulationParams.annualInterestRate,
-    simulationParams.originalRemainingSchedule
+    simulationParams.originalRemainingSchedule,
+    strategy || "tenure"
   );
 
   res.status(200).json(simulationResults);
@@ -303,7 +304,7 @@ async function simulateLoanPrepayment(req, res) {
 // ── CONFIRM Prepayment ────────────────────────────────────
 async function confirmLoanPrepayment(req, res) {
   const { id } = req.params;
-  const { prepaymentAmount } = validators.confirmPrepaymentSchema.parse(req.body);
+  const { prepaymentAmount, strategy } = validators.confirmPrepaymentSchema.parse(req.body);
 
   const loan = await prisma.loan.findUnique({
     where: { id, userId: req.userId },
@@ -335,17 +336,35 @@ async function confirmLoanPrepayment(req, res) {
   const firstUnpaidDate = new Date(unPaidSchedule[0].dueDate);
   // Revert back one month so start baseline functions evenly via generateAmortizationSchedule math
   firstUnpaidDate.setMonth(firstUnpaidDate.getMonth() - 1); 
-  
+
+  const isEmiReduction = strategy === "emi";
   let newlyGeneratedScheduleRows = [];
+  let newEmiAmount = Number(loan.emiAmount);
+
   if (currentOutstanding > 0) {
-    const newMaxTenureAllowed = 1200; // Uncapped ceiling used only for schedule generator upper iteration bounds
-    newlyGeneratedScheduleRows = generateAmortizationSchedule(
-      currentOutstanding,
-      Number(loan.interestRate),
-      newMaxTenureAllowed, 
-      Number(loan.emiAmount),
-      firstUnpaidDate
-    );
+    if (isEmiReduction) {
+      newEmiAmount = calculateEMI(
+        currentOutstanding,
+        Number(loan.interestRate),
+        unPaidSchedule.length
+      );
+      newlyGeneratedScheduleRows = generateAmortizationSchedule(
+        currentOutstanding,
+        Number(loan.interestRate),
+        unPaidSchedule.length,
+        newEmiAmount,
+        firstUnpaidDate
+      );
+    } else {
+      const newMaxTenureAllowed = 1200; // Uncapped ceiling used only for schedule generator upper iteration bounds
+      newlyGeneratedScheduleRows = generateAmortizationSchedule(
+        currentOutstanding,
+        Number(loan.interestRate),
+        newMaxTenureAllowed, 
+        Number(loan.emiAmount),
+        firstUnpaidDate
+      );
+    }
   }
 
   // Atomically wipe future stale projections, bind new rows, update balance
@@ -386,6 +405,7 @@ async function confirmLoanPrepayment(req, res) {
       where: { id },
       data: {
         outstandingBalance: currentOutstanding,
+        emiAmount: isEmiReduction && currentOutstanding > 0 ? parseFloat(newEmiAmount.toFixed(2)) : loan.emiAmount,
         status: nextStatus
       },
     });
