@@ -15,14 +15,12 @@ const { AppError } = require("./errorHandler");
 function authenticate(req, res, next) {
   let token = null;
 
-  // 1. Check Authorization header first (immune to cross-site third-party cookie blocking)
-  if (req.headers.authorization?.startsWith("Bearer ")) {
+  // 1. Primary: Check HttpOnly cookie
+  if (req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
+  } else if (req.headers.authorization?.startsWith("Bearer ")) {
+    // 2. Secondary fallback: Check Authorization header
     token = req.headers.authorization.split(" ")[1];
-  }
-
-  // 2. Fall back to HttpOnly cookie (for same-origin or environments supporting cookies)
-  if (!token) {
-    token = req.cookies?.accessToken;
   }
 
   if (!token) {

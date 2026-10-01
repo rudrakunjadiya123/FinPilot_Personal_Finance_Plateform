@@ -21,6 +21,7 @@ const getAccessTokenCookieOptions = () => ({
   secure: isProduction,
   sameSite: isProduction ? "none" : "lax",
   maxAge: 15 * 60 * 1000, // 15 minutes
+  path: "/",
 });
 
 const getRefreshTokenCookieOptions = () => ({
@@ -28,6 +29,7 @@ const getRefreshTokenCookieOptions = () => ({
   secure: isProduction,
   sameSite: isProduction ? "none" : "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: "/",
 });
 
 const getCookieOptions = getRefreshTokenCookieOptions;
@@ -36,6 +38,7 @@ const getClearCookieOptions = () => ({
   httpOnly: true,
   secure: isProduction,
   sameSite: isProduction ? "none" : "lax",
+  path: "/",
 });
 
 // Helper to generate access and refresh tokens
@@ -81,14 +84,12 @@ async function register(req, res) {
 
   const { accessToken, refreshToken } = await createAuthTokens(user.id);
 
-  // Send tokens as httpOnly secure cookies
+  // Send tokens strictly as httpOnly cookies
   res.cookie("accessToken", accessToken, getAccessTokenCookieOptions());
   res.cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions());
 
   res.status(201).json({
     message: "Registration successful",
-    accessToken,
-    refreshToken,
     user: { id: user.id, name: user.name, email: user.email },
   });
 }
@@ -111,21 +112,19 @@ async function login(req, res) {
 
   const { accessToken, refreshToken } = await createAuthTokens(user.id);
 
-  // Send tokens as httpOnly secure cookies
+  // Send tokens strictly as httpOnly cookies
   res.cookie("accessToken", accessToken, getAccessTokenCookieOptions());
   res.cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions());
 
   res.status(200).json({ 
     message: "Login successful",
-    accessToken, 
-    refreshToken,
     user: { id: user.id, name: user.name, email: user.email }
   });
 }
 
 // ── Refresh Token ─────────────────────────────────────────
 async function refresh(req, res) {
-  // Support both cookie (same-origin/modern cross-site) and body fallback
+  // Support both cookie (primary) and body fallback
   const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
   if (!refreshToken) {
@@ -145,14 +144,12 @@ async function refresh(req, res) {
   // Create new tokens
   const newTokens = await createAuthTokens(userId);
 
-  // Send new tokens as httpOnly secure cookies
+  // Send new tokens strictly as httpOnly cookies
   res.cookie("accessToken", newTokens.accessToken, getAccessTokenCookieOptions());
   res.cookie("refreshToken", newTokens.refreshToken, getRefreshTokenCookieOptions());
 
   res.status(200).json({ 
-    message: "Tokens refreshed successfully",
-    accessToken: newTokens.accessToken,
-    refreshToken: newTokens.refreshToken
+    message: "Tokens refreshed successfully"
   });
 }
 
@@ -285,7 +282,8 @@ async function deleteAccount(req, res) {
   await redis.keys(`cashflow:${userId}:*`).then(keys => keys.length && redis.del(keys));
   await redis.del(`networth:${userId}`);
   
-  // Clear refresh token cookie
+  // Clear auth cookies
+  res.clearCookie("accessToken", getClearCookieOptions());
   res.clearCookie("refreshToken", getClearCookieOptions());
 
   res.status(200).json({ message: "Account deleted successfully" });

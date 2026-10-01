@@ -7,8 +7,10 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const queryClient = useQueryClient();
 
-  // Clear any legacy tokens stored in localStorage to enforce pure cookie auth
+  // Clear any legacy tokens stored in storage to enforce pure httpOnly cookie auth
   useEffect(() => {
+    sessionStorage.removeItem('finpilot_access_token');
+    sessionStorage.removeItem('finpilot_refresh_token');
     localStorage.removeItem('finpilot_token');
     localStorage.removeItem('finpilot_refresh_token');
     localStorage.removeItem('taskflow_token');
@@ -35,12 +37,7 @@ export function AuthProvider({ children }) {
       return data;
     },
     onSuccess: (data) => {
-      if (data?.accessToken) {
-        sessionStorage.setItem('finpilot_access_token', data.accessToken);
-      }
-      if (data?.refreshToken) {
-        sessionStorage.setItem('finpilot_refresh_token', data.refreshToken);
-      }
+      // Both tokens are stored purely in httpOnly cookies by the server; no tokens in storage
       if (data?.user) {
         queryClient.setQueryData(['me'], data.user);
       }
@@ -54,12 +51,7 @@ export function AuthProvider({ children }) {
       return data;
     },
     onSuccess: (data) => {
-      if (data?.accessToken) {
-        sessionStorage.setItem('finpilot_access_token', data.accessToken);
-      }
-      if (data?.refreshToken) {
-        sessionStorage.setItem('finpilot_refresh_token', data.refreshToken);
-      }
+      // Both tokens are stored purely in httpOnly cookies by the server; no tokens in storage
       if (data?.user) {
         queryClient.setQueryData(['me'], data.user);
       }
@@ -69,25 +61,23 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      const refreshToken = sessionStorage.getItem('finpilot_refresh_token');
-      await apiClient.post('/api/auth/logout', { refreshToken });
+      await apiClient.post('/api/auth/logout');
     } catch {
       // Ignore network errors on logout
     } finally {
       sessionStorage.removeItem('finpilot_access_token');
       sessionStorage.removeItem('finpilot_refresh_token');
-      queryClient.setQueryData(['me'], null);
-      queryClient.clear();
       localStorage.removeItem('finpilot_token');
       localStorage.removeItem('finpilot_refresh_token');
       localStorage.removeItem('taskflow_token');
       localStorage.removeItem('taskflow_user');
+      queryClient.setQueryData(['me'], null);
+      queryClient.clear();
     }
   };
 
   const value = {
     user,
-    token: sessionStorage.getItem('finpilot_access_token') || null,
     isUserLoading,
     isAuthenticated: !!user,
     login: loginMutation.mutateAsync,
