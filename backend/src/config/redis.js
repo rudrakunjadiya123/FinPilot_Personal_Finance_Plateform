@@ -11,12 +11,12 @@ const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 const redis = new Redis(redisUrl, {
   maxRetriesPerRequest: null, // Required by BullMQ
   enableReadyCheck: false,
+  family: 4, // Force IPv4 (prevents Windows IPv6 ETIMEDOUT loop)
+  connectTimeout: 10000,
   tls: redisUrl.startsWith("rediss://") ? {} : undefined, // Enable TLS for rediss:// URLs
   retryStrategy(times) {
-    const delay = Math.min(times * 200, 5000);
-    console.log(
-      `[Redis] Reconnecting in ${delay}ms... (attempt ${times})`
-    );
+    if (times > 20) return null; // Stop infinite reconnection loop
+    const delay = Math.min(times * 500, 5000);
     return delay;
   },
 });

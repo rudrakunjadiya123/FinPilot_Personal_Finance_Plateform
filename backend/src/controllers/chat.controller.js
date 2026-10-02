@@ -123,6 +123,51 @@ async function ask(req, res) {
         const { getSpendingByCategory } = require("../services/categorization.service");
         const monthStr = call.args.month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
         toolExecutionResult = await getSpendingByCategory(userId, monthStr);
+      } else if (call.name === "get_transactions_by_date_range") {
+        const { startDate, endDate, category } = call.args;
+        const start = new Date(`${startDate}T00:00:00.000Z`);
+        const end = new Date(`${endDate}T23:59:59.999Z`);
+
+        const whereClause = {
+          userId,
+          date: { gte: start, lte: end },
+          type: "debit",
+        };
+
+        if (category && category.trim() !== "") {
+          const catLower = category.toLowerCase().trim();
+          if (catLower === "food" || catLower === "dining") {
+            whereClause.category = { in: ["Food", "Food & Dining", "Groceries"] };
+          } else {
+            whereClause.category = { equals: category, mode: "insensitive" };
+          }
+        }
+
+        const txs = await prisma.transaction.findMany({
+          where: whereClause,
+          orderBy: { date: "asc" },
+          select: {
+            date: true,
+            amount: true,
+            descriptionRaw: true,
+            category: true,
+          },
+        });
+
+        const totalSpent = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+        toolExecutionResult = {
+          startDate,
+          endDate,
+          filterCategory: category || "All",
+          totalTransactions: txs.length,
+          totalSpent: Math.round(totalSpent * 100) / 100,
+          transactions: txs.map(t => ({
+            date: t.date.toISOString().split("T")[0],
+            amount: Number(t.amount),
+            merchant: t.descriptionRaw,
+            category: t.category,
+          })),
+        };
       } else if (call.name === "extract_lend_record") {
         const missingFields = [];
         if (!call.args.personEmail) missingFields.push("personEmail");

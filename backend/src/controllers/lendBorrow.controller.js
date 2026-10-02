@@ -10,6 +10,7 @@ const redis = require("../config/redis");
 const { AppError } = require("../middleware/errorHandler");
 const validators = require("../validators/lendBorrow.validator");
 const { embeddingGenerationQueue } = require("../config/queues");
+const { formatLendBorrowText } = require("../services/embedding.service");
 const { LEND_BORROW_STATUS } = require("../utils/constants");
 const { sendEmail } = require("../services/email.service");
 
@@ -280,18 +281,17 @@ async function createLendBorrowRecordService(userId, data) {
     },
   });
 
-  // SRS LB-7: enqueue embedding generation if notes exist
-  if (data.notes && data.notes.trim() !== "") {
-    try {
-      await embeddingGenerationQueue.add("generate", {
-        recordId: record.id,
-        recordType: "lendBorrow",
-        textChunk: data.notes,
-        userId,
-      });
-    } catch (err) {
-      console.warn("[Queue] Background embedding skipped (Redis/Queue offline):", err.message);
-    }
+  // Generate and store vector embedding for the lend/borrow entry
+  try {
+    const textChunk = formatLendBorrowText(record);
+    await embeddingGenerationQueue.add("generate", {
+      recordId: record.id,
+      recordType: "lendBorrow",
+      textChunk,
+      userId,
+    });
+  } catch (err) {
+    console.warn("[Queue] Background embedding skipped (Redis/Queue offline):", err.message);
   }
 
   await invalidateDashboardCaches(userId);
@@ -326,18 +326,17 @@ async function update(req, res) {
     data: updateData,
   });
 
-  // SRS LB-7: re-run embeddings if notes changed
-  if (data.notes !== undefined && data.notes !== existing.notes) {
-    try {
-      await embeddingGenerationQueue.add("generate", {
-        recordId: updated.id,
-        recordType: "lendBorrow",
-        textChunk: data.notes || "",
-        userId: req.userId,
-      });
-    } catch (err) {
-      console.warn("[Queue] Background embedding skipped (Redis/Queue offline):", err.message);
-    }
+  // Re-run embedding for updated record
+  try {
+    const textChunk = formatLendBorrowText(updated);
+    await embeddingGenerationQueue.add("generate", {
+      recordId: updated.id,
+      recordType: "lendBorrow",
+      textChunk,
+      userId: req.userId,
+    });
+  } catch (err) {
+    console.warn("[Queue] Background embedding update skipped:", err.message);
   }
 
   await invalidateDashboardCaches(req.userId);

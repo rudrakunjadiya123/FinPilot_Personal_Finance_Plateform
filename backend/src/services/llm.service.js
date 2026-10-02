@@ -100,6 +100,19 @@ const functionDeclarations = [
     parameters: { type: "OBJECT", properties: { month: { type: "STRING", description: "Month in YYYY-MM format" } }, required: ["month"] }
   },
   {
+    name: "get_transactions_by_date_range",
+    description: "Queries bank statement transactions filtered by start date, end date, and optional category (e.g., Food, Groceries, Travel, Entertainment, Utilities, Investment). Use this whenever the user asks how much they spent in a specific date range or on a specific category.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        startDate: { type: "STRING", description: "Start date in YYYY-MM-DD format" },
+        endDate: { type: "STRING", description: "End date in YYYY-MM-DD format" },
+        category: { type: "STRING", description: "Optional category filter like Food, Groceries, Travel, Shopping, etc." }
+      },
+      required: ["startDate", "endDate"]
+    }
+  },
+  {
     name: "extract_lend_record",
     description: "Extract structured data from a user's statement about lending or borrowing money. Returns drafted data to be presented for user confirmation.",
     parameters: {

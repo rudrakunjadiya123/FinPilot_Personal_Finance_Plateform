@@ -14,6 +14,7 @@ const {
   simulatePrepayment,
 } = require("../utils/computationEngine");
 const { embeddingGenerationQueue } = require("../config/queues");
+const { formatLoanText } = require("../services/embedding.service");
 const { LOAN_STATUS, PAID_STATUS } = require("../utils/constants");
 
 async function invalidateDashboardCaches(userId, monthIsoDate) {
@@ -117,14 +118,17 @@ async function createLoan(req, res) {
     return createdLoan;
   }, { maxWait: 15000, timeout: 30000 });
 
-  // SRS LOAN-9 / RAG-2: If notes exist, enqueue embedding generation
-  if (notes && notes.trim() !== "") {
+  // Generate and store vector embedding for the loan entry
+  try {
+    const textChunk = formatLoanText(loan);
     await embeddingGenerationQueue.add("generate", {
       recordId: loan.id,
       recordType: "loan",
-      textChunk: notes,
+      textChunk,
       userId: req.userId,
     });
+  } catch (err) {
+    console.warn("[Queue] Background embedding skipped for loan (Queue/Redis offline):", err.message);
   }
   
   await invalidateDashboardCaches(req.userId);
@@ -147,14 +151,17 @@ async function updateLoan(req, res) {
     data,
   });
 
-  // Re-run embeddings if notes specifically changed (SRS LOAN-9)
-  if (data.notes !== undefined && data.notes !== existingLoan.notes) {
+  // Re-run embedding for updated loan
+  try {
+    const textChunk = formatLoanText(updatedLoan);
     await embeddingGenerationQueue.add("generate", {
       recordId: updatedLoan.id,
       recordType: "loan",
-      textChunk: data.notes || "",
+      textChunk,
       userId: req.userId,
     });
+  } catch (err) {
+    console.warn("[Queue] Background embedding update skipped for loan:", err.message);
   }
 
   await invalidateDashboardCaches(req.userId);

@@ -163,11 +163,12 @@ function formatContextForLLM(structuredData, semanticResults) {
     }
   }
 
-  // ── Semantic search results (from notes/embeddings) ──
+  // ── Semantic search results (vector embeddings across loans, lend/borrow, goals, transactions) ──
   if (semanticResults.length > 0) {
-    lines.push("\n## Relevant Notes (from your records)");
+    lines.push("\n## Relevant Context (from semantic search over your records)");
     for (const result of semanticResults) {
-      lines.push(`- [${result.recordType}] ${result.content}`);
+      const typeLabel = result.recordType.toUpperCase();
+      lines.push(`- [${typeLabel}] ${result.content}`);
     }
   }
 

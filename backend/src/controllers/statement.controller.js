@@ -15,6 +15,8 @@ const {
   VALID_CATEGORIES,
 } = require("../services/categorization.service");
 const { getChatCompletion } = require("../services/llm.service");
+const { embeddingGenerationQueue } = require("../config/queues");
+const { formatTransactionText } = require("../services/embedding.service");
 
 // ── 1. Upload & Process Statement ────────────────────────
 // POST /api/statements/upload
@@ -142,6 +144,26 @@ async function uploadStatement(req, res) {
         manualReviewCount: counters.manual,
       },
     });
+
+    // Enqueue all statement transactions for vector embedding in bulk
+    try {
+      const updatedTxs = await prisma.transaction.findMany({ where: { statementUploadId: upload.id } });
+      if (updatedTxs.length > 0) {
+        const jobs = updatedTxs.map((tx) => ({
+          name: "generate",
+          data: {
+            recordId: tx.id,
+            recordType: "transaction",
+            textChunk: formatTransactionText(tx),
+            userId,
+          },
+        }));
+        await embeddingGenerationQueue.addBulk(jobs);
+        console.log(`[Statement Controller] Queued ${jobs.length} transactions for vector embedding.`);
+      }
+    } catch (err) {
+      console.warn("[Queue] Background embedding skipped for transactions:", err.message);
+    }
 
     // ── Phase 3: Lend/Borrow Payment Mode Auto-Verification Tripwire ──
     try {

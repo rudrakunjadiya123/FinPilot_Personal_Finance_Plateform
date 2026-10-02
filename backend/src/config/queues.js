@@ -20,9 +20,18 @@ const sendReminderEmailQueue = new Queue("send-reminder-email", { connection });
 /** Monthly end-of-month summary email */
 const monthlySummaryQueue = new Queue("monthly-summary", { connection });
 
-/** Embedding generation for loan/lendBorrow notes */
+/** Embedding generation for loan/lendBorrow notes & transactions */
 const embeddingGenerationQueue = new Queue("embedding-generation", {
   connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 1000,
+    },
+    removeOnComplete: { count: 1000 },
+    removeOnFail: { count: 500 },
+  },
 });
 
 // ── Register Repeating Jobs (called once at startup) ──────
