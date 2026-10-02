@@ -242,13 +242,48 @@ async function getDashboardSummary(req, res) {
     };
   });
 
-  const monthlyIncome = cashFlowInfo.totalIncome || 0;
-  const monthlyExpense = cashFlowInfo.totalObligations || 0;
-  const availableCash = monthlyIncome - monthlyExpense;
-  const netWorthVal = netWorthInfo.netWorth || 0;
-  const totalDebtVal = netWorthInfo.totalLiabilities || 0;
+  // 6. Compute Real Cash Flow History for the last 4 months (Dynamic)
+  const history4Months = [];
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  for (let i = 3; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const mLabel = monthNames[d.getMonth()];
+    
+    // Check if current month (already calculated) or calculate from DB
+    let cf;
+    if (i === 0) {
+      cf = cashFlowInfo;
+    } else {
+      cf = await computeCashFlowFromDB(userId, mStr);
+    }
+    history4Months.push({
+      month: mLabel,
+      amount: cf.cashFlow,
+    });
+  }
 
-  // 6. Generate Dynamic Data-Driven AI Financial Insights
+  // 7. Compute Real Monthly Expense Trend (Current Month vs Previous Month)
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, "0")}`;
+  const prevMonthCf = history4Months[2] || await computeCashFlowFromDB(userId, prevMonthStr);
+  
+  const currentExpense = monthlyExpense;
+  const previousExpense = prevMonthCf.totalObligations || 0;
+  let monthlyExpenseTrend = 0;
+  if (previousExpense > 0) {
+    monthlyExpenseTrend = parseFloat((((currentExpense - previousExpense) / previousExpense) * 100).toFixed(1));
+  }
+
+  // 8. Compute Real Net Worth Trend (Surplus added this month vs existing liabilities)
+  // If user has liabilities, cash flow changes their net position
+  let netWorthTrend = 0;
+  const prevNetWorth = netWorthVal - availableCash;
+  if (prevNetWorth !== 0) {
+    netWorthTrend = parseFloat((((netWorthVal - prevNetWorth) / Math.abs(prevNetWorth)) * 100).toFixed(1));
+  }
+
+  // 9. Generate Dynamic Data-Driven AI Financial Insights
   const dynamicAIInsights = await generateDynamicAIInsights(userId, {
     categoryTotals,
     activeLoans,
@@ -263,10 +298,10 @@ async function getDashboardSummary(req, res) {
   res.status(200).json({
     kpis: {
       netWorth: netWorthVal,
-      netWorthTrend: 4.2,
+      netWorthTrend: netWorthTrend,
       monthlyIncome,
       monthlyExpense,
-      monthlyExpenseTrend: -6.5,
+      monthlyExpenseTrend: monthlyExpenseTrend,
       totalDebt: totalDebtVal,
       availableCash: availableCash,
       totalEmi: totalEmi || 0,
@@ -275,12 +310,7 @@ async function getDashboardSummary(req, res) {
       income: monthlyIncome,
       expenses: monthlyExpense,
       savings: availableCash,
-      history: [
-        { month: "May", amount: 0 },
-        { month: "Jun", amount: 0 },
-        { month: "Jul", amount: 0 },
-        { month: "Aug", amount: availableCash },
-      ],
+      history: history4Months,
     },
     spendingAnalysis: {
       food: categoryTotals.Food || 0,
