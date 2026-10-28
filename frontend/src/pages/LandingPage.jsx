@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { 
   ArrowRight, Brain, BarChart3, Wallet, 
   TrendingUp, CreditCard, Users, FileText,
@@ -139,6 +140,7 @@ const testimonials = [
    ──────────────────────────────────────────────────────── */
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -183,18 +185,29 @@ export default function LandingPage() {
 
           {/* CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={() => navigate('/login')}
-              className="text-sm font-semibold text-ink-soft hover:text-ink transition-colors px-4 py-2"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => navigate('/login')}
-              className="text-sm font-semibold accent-gradient text-white px-5 py-2.5 rounded-xl hover:shadow-glow transition-all duration-300 btn-press"
-            >
-              Get Started Free
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={() => navigate('/app')}
+                className="text-sm font-semibold accent-gradient text-white px-5 py-2.5 rounded-xl hover:shadow-glow transition-all duration-300 btn-press"
+              >
+                Go to Dashboard
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="text-sm font-semibold text-ink-soft hover:text-ink transition-colors px-4 py-2"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="text-sm font-semibold accent-gradient text-white px-5 py-2.5 rounded-xl hover:shadow-glow transition-all duration-300 btn-press"
+                >
+                  Get Started Free
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -211,8 +224,8 @@ export default function LandingPage() {
             <a href="#features" className="block text-sm font-medium text-ink-soft py-2" onClick={() => setMobileMenuOpen(false)}>Features</a>
             <a href="#how-it-works" className="block text-sm font-medium text-ink-soft py-2" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
             <a href="#testimonials" className="block text-sm font-medium text-ink-soft py-2" onClick={() => setMobileMenuOpen(false)}>Testimonials</a>
-            <button onClick={() => navigate('/login')} className="w-full text-sm font-semibold accent-gradient text-white px-5 py-2.5 rounded-xl mt-2">
-              Get Started Free
+            <button onClick={() => navigate(isAuthenticated ? '/app' : '/login')} className="w-full text-sm font-semibold accent-gradient text-white px-5 py-2.5 rounded-xl mt-2">
+              {isAuthenticated ? 'Go to Dashboard' : 'Get Started Free'}
             </button>
           </div>
         )}
@@ -271,10 +284,10 @@ export default function LandingPage() {
           <FadeIn delay={300}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(isAuthenticated ? '/app' : '/login')}
                 className="group flex items-center gap-2 accent-gradient text-white font-semibold text-base px-8 py-4 rounded-2xl hover:shadow-glow transition-all duration-300 btn-press"
               >
-                Start Free Today
+                {isAuthenticated ? 'Go to Dashboard' : 'Start Free Today'}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
               <a
@@ -532,10 +545,10 @@ export default function LandingPage() {
                   Join thousands of users who are already managing their money smarter with FinPilot.
                 </p>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate(isAuthenticated ? '/app' : '/login')}
                   className="group inline-flex items-center gap-2 bg-white text-accent font-bold text-base px-8 py-4 rounded-2xl hover:shadow-2xl transition-all duration-300 btn-press"
                 >
-                  Get Started — It's Free
+                  {isAuthenticated ? 'Go to Dashboard' : "Get Started — It's Free"}
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>

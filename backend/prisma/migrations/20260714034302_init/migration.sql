@@ -74,22 +74,6 @@ CREATE TABLE "RepaymentHistory" (
     CONSTRAINT "RepaymentHistory_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "CreditCardBill" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "cardName" TEXT NOT NULL,
-    "last4Digits" TEXT NOT NULL,
-    "billMonth" TIMESTAMP(3) NOT NULL,
-    "totalAmount" DECIMAL(12,2) NOT NULL,
-    "minimumDue" DECIMAL(12,2) NOT NULL,
-    "dueDate" TIMESTAMP(3) NOT NULL,
-    "statementDate" TIMESTAMP(3) NOT NULL,
-    "paidStatus" TEXT NOT NULL DEFAULT 'unpaid',
-    "paidAmount" DECIMAL(12,2),
-
-    CONSTRAINT "CreditCardBill_pkey" PRIMARY KEY ("id")
-);
 
 -- CreateTable
 CREATE TABLE "IncomeEntry" (
@@ -162,8 +146,6 @@ CREATE INDEX "EMISchedule_loanId_dueDate_idx" ON "EMISchedule"("loanId", "dueDat
 -- CreateIndex
 CREATE INDEX "LendBorrowRecord_userId_expectedReturnDate_idx" ON "LendBorrowRecord"("userId", "expectedReturnDate");
 
--- CreateIndex
-CREATE INDEX "CreditCardBill_userId_dueDate_idx" ON "CreditCardBill"("userId", "dueDate");
 
 -- CreateIndex
 CREATE INDEX "IncomeEntry_userId_idx" ON "IncomeEntry"("userId");
@@ -192,8 +174,6 @@ ALTER TABLE "LendBorrowRecord" ADD CONSTRAINT "LendBorrowRecord_userId_fkey" FOR
 -- AddForeignKey
 ALTER TABLE "RepaymentHistory" ADD CONSTRAINT "RepaymentHistory_lendBorrowId_fkey" FOREIGN KEY ("lendBorrowId") REFERENCES "LendBorrowRecord"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "CreditCardBill" ADD CONSTRAINT "CreditCardBill_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "IncomeEntry" ADD CONSTRAINT "IncomeEntry_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

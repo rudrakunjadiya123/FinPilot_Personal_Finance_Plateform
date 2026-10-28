@@ -103,7 +103,7 @@ async function getStructuredContext(userId) {
  * @returns {{ contextText: string, piiEntries: Array }}
  */
 function formatContextForLLM(structuredData, semanticResults) {
-  const { loans = [], lendBorrow = [], ccBills = [], incomeEntries = [] } = structuredData;
+  const { loans = [], lendBorrow = [], incomeEntries = [] } = structuredData;
   const lines = [];
   const piiEntries = [];
 
@@ -134,20 +134,6 @@ function formatContextForLLM(structuredData, semanticResults) {
         (isOverdue ? " [OVERDUE]" : "") +
         `, Due: ${new Date(lb.expectedReturnDate).toISOString().split("T")[0]}` +
         (lb.notes ? ` (Notes: ${lb.notes})` : "")
-      );
-    }
-  }
-
-  // ── Credit Cards ──
-  if (ccBills.length > 0) {
-    lines.push("\n## Recent Credit Card Bills");
-    for (const cc of ccBills) {
-      const paid = cc.paidAmount ? Number(cc.paidAmount) : 0;
-      lines.push(
-        `- ${cc.cardName} (****${cc.last4Digits}): ` +
-        `₹${Number(cc.totalAmount).toLocaleString("en-IN")} due ${new Date(cc.dueDate).toISOString().split("T")[0]}, ` +
-        `Status: ${cc.paidStatus}` +
-        (paid > 0 ? `, Paid: ₹${paid.toLocaleString("en-IN")}` : "")
       );
     }
   }

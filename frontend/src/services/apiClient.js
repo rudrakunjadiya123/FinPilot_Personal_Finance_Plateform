@@ -73,8 +73,9 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('taskflow_token');
         localStorage.removeItem('taskflow_user');
 
-        // If refresh fails (e.g. refresh token expired or invalid), redirect to login
-        if (window.location.pathname !== '/login') {
+        // Only redirect to login if refresh fails while accessing an authenticated route (/app/*).
+        // Public routes like the landing page ('/') or login ('/login') must never redirect automatically.
+        if (window.location.pathname.startsWith('/app')) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
